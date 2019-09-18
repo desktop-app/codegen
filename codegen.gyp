@@ -6,7 +6,7 @@
 
 {
   'includes': [
-    '../gyp_helpers/common/common.gypi',
+    '../gyp/helpers/common/common.gypi',
   ],
   'variables': {
     'src_loc': '.',
@@ -16,8 +16,8 @@
   'targets': [{
     'target_name': 'codegen_lang',
     'includes': [
-      '../gyp_helpers/common/executable.gypi',
-      '../gyp_helpers/modules/qt.gypi',
+      '../gyp/helpers/common/executable.gypi',
+      '../gyp/helpers/modules/qt.gypi',
     ],
 
     'include_dirs': [
@@ -49,11 +49,11 @@
   }, {
     'target_name': 'codegen_style',
     'includes': [
-      '../gyp_helpers/common/executable.gypi',
-      '../gyp_helpers/modules/qt.gypi',
+      '../gyp/helpers/common/executable.gypi',
+      '../gyp/helpers/modules/qt.gypi',
     ],
     'dependencies': [
-      '../lib_base/lib_base.gyp:lib_base',
+      '<(submodules_loc)/lib_base/lib_base.gyp:lib_base',
     ],
     'include_dirs': [
       '<(src_loc)',
@@ -88,8 +88,8 @@
   }, {
     'target_name': 'codegen_numbers',
     'includes': [
-      '../gyp_helpers/common/executable.gypi',
-      '../gyp_helpers/modules/qt.gypi',
+      '../gyp/helpers/common/executable.gypi',
+      '../gyp/helpers/modules/qt.gypi',
     ],
 
     'include_dirs': [
@@ -121,8 +121,8 @@
   }, {
     'target_name': 'codegen_emoji',
     'includes': [
-      '../gyp_helpers/common/executable.gypi',
-      '../gyp_helpers/modules/qt.gypi',
+      '../gyp/helpers/common/executable.gypi',
+      '../gyp/helpers/modules/qt.gypi',
     ],
 
     'include_dirs': [
