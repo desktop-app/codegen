@@ -644,10 +644,13 @@ structure::Value ParsedFile::readFontValue() {
 				if (auto formatToken = file_.getToken(BasicType::Name)) {
 					if (tokenValue(formatToken) == "bold") {
 						flags |= structure::data::font::Bold;
+						continue;
 					} else if (tokenValue(formatToken) == "italic") {
 						flags |= structure::data::font::Italic;
+						continue;
 					} else if (tokenValue(formatToken) == "underline") {
 						flags |= structure::data::font::Underline;
+						continue;
 					} else {
 						file_.putBack();
 					}
