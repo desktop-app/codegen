@@ -11,7 +11,7 @@
   'variables': {
     'src_loc': '.',
     'codegen_src_loc': '<(src_loc)/codegen',
-    'mac_target': '10.10',
+    'mac_target': '10.12',
   },
   'targets': [{
     'target_name': 'codegen_lang',
