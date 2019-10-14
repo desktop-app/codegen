@@ -71,6 +71,7 @@ private:
 	structure::Value defaultConstructedStruct(const structure::FullName &name);
 	void applyStructParent(structure::Value &result, const structure::FullName &parentName);
 	bool readStructValueInner(structure::Value &result);
+	bool checkNoImplicitUnnamedIcons(const structure::Value &value);
 	bool assignStructField(structure::Value &result, const structure::Variable &field);
 	bool readStructParents(structure::Value &result);
 

@@ -383,28 +383,44 @@ void ParsedFile::applyStructParent(structure::Value &result, const structure::Fu
 				auto &dstValue(dstField.variable.value);
 				logAssert(srcValue.type() == dstValue.type()) << "struct field type check failed";
 
-				// Optimization: don't let the style files to contain unnamed inherited
-				// icons from the other (included) style files, because they will
-				// duplicate the binary data across different style c++ source files.
-				//
-				// Example:
-				// a.style has "A: Struct { icon: icon { ..file.. } };" and
-				// b.style has "B: Struct(A) { .. };" with non-overriden icon field.
-				// Then both style_a.cpp and style_b.cpp will contain binary data of "file".
-				if (!fromTheSameModule
-					&& srcValue.type().tag == structure::TypeTag::Icon
-					&& !srcValue.Icon().parts.empty()
-					&& srcValue.copyOf().isEmpty()) {
-					logError(kErrorIconDuplicate) << "an unnamed icon field '" << logFullName(srcField.variable.name) << "' is inherited from parent '" << logFullName(parentName) << "'";
-					return;
-				}
 				dstValue = srcValue;
-				dstField.status = Status::Implicit;
+				dstField.status = fromTheSameModule
+					? Status::Implicit
+					: Status::ImplicitOtherModule;
 			}
 		}
 	} else {
 		logError(kErrorIdentifierNotFound) << "parent '" << logFullName(parentName) << "' not found";
 	}
+}
+
+bool ParsedFile::checkNoImplicitUnnamedIcons(const structure::Value &value) {
+	auto *fields = value.Fields();
+	if (!fields) {
+		logAssert(false) << "struct data check failed";
+		return false;
+	}
+	for (int i = 0, s = fields->size(); i != s; ++i) {
+		const auto &field = fields->at(i);
+		const auto &value = field.variable.value;
+		using Status = structure::data::field::Status;
+		if (field.status == Status::ImplicitOtherModule
+			&& (value.type().tag == structure::TypeTag::Icon)
+			&& !value.Icon().parts.empty()
+			&& value.copyOf().isEmpty()) {
+			// Optimization: don't let the style files to contain unnamed inherited
+			// icons from the other (included) style files, because they will
+			// duplicate the binary data across different style c++ source files.
+			//
+			// Example:
+			// a.style has "A: Struct { icon: icon { ..file.. } };" and
+			// b.style has "B: Struct(A) { .. };" with non-overriden icon field.
+			// Then both style_a.cpp and style_b.cpp will contain binary data of "file".
+			logError(kErrorIconDuplicate) << "an unnamed icon field '" << logFullName(field.variable.name) << "' is inherited from parent.";
+			return false;
+		}
+	}
+	return true;
 }
 
 bool ParsedFile::readStructValueInner(structure::Value &result) {
@@ -420,7 +436,7 @@ bool ParsedFile::readStructValueInner(structure::Value &result) {
 				}
 			}
 		} else if (assertNextToken(BasicType::RightBrace)) {
-			return true;
+			return checkNoImplicitUnnamedIcons(result);
 		}
 	} while (!failed());
 	return false;

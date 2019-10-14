@@ -189,6 +189,7 @@ struct field {
 	enum class Status {
 		Uninitialized,
 		Implicit,
+		ImplicitOtherModule,
 		Explicit
 	};
 	Variable variable;
