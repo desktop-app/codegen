@@ -1,5 +1,5 @@
 add_executable(codegen_lang)
-init_target(codegen_lang)
+init_target(codegen_lang "(codegen)")
 
 get_filename_component(src_loc ../.. REALPATH)
 
