@@ -388,7 +388,7 @@ bool Generator::writeHeaderRequiredIncludes() {
 		return true;
 	}
 	for (const auto base : includes) {
-		header_->include(base + ".h");
+		header_->include("styles/" + base + ".h");
 	}
 	header_->newline();
 	return true;
@@ -678,8 +678,8 @@ bool Generator::writeIncludesInSource() {
 		return true;
 	};
 	auto result = module_.enumIncludes(collector);
-	for (auto base : includes) {
-		source_->include(base + ".h");
+	for (const auto &base : includes) {
+		source_->include("styles/" + base + ".h");
 	}
 	source_->newline();
 	return result;
