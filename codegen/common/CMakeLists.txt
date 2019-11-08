@@ -3,26 +3,28 @@ init_target(codegen_common)
 
 get_filename_component(src_loc ../.. REALPATH)
 
+set(codegen_common_sources
+PRIVATE
+    codegen/common/basic_tokenized_file.cpp
+    codegen/common/basic_tokenized_file.h
+    codegen/common/checked_utf8_string.cpp
+    codegen/common/checked_utf8_string.h
+    codegen/common/clean_file.cpp
+    codegen/common/clean_file.h
+    codegen/common/clean_file_reader.h
+    codegen/common/const_utf8_string.h
+    codegen/common/cpp_file.cpp
+    codegen/common/cpp_file.h
+    codegen/common/logging.cpp
+    codegen/common/logging.h
+)
+nice_target_sources(codegen_common ${src_loc} "${codegen_common_sources}")
+
 target_include_directories(codegen_common
 PUBLIC
     ${src_loc}
 )
 
-target_sources(codegen_common
-PRIVATE
-    ${src_loc}/codegen/common/basic_tokenized_file.cpp
-    ${src_loc}/codegen/common/basic_tokenized_file.h
-    ${src_loc}/codegen/common/checked_utf8_string.cpp
-    ${src_loc}/codegen/common/checked_utf8_string.h
-    ${src_loc}/codegen/common/clean_file.cpp
-    ${src_loc}/codegen/common/clean_file.h
-    ${src_loc}/codegen/common/clean_file_reader.h
-    ${src_loc}/codegen/common/const_utf8_string.h
-    ${src_loc}/codegen/common/cpp_file.cpp
-    ${src_loc}/codegen/common/cpp_file.h
-    ${src_loc}/codegen/common/logging.cpp
-    ${src_loc}/codegen/common/logging.h
-)
 target_link_libraries(codegen_common
 PUBLIC
     external_qt

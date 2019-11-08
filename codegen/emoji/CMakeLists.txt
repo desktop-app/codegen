@@ -3,22 +3,23 @@ init_target(codegen_emoji)
 
 get_filename_component(src_loc ../.. REALPATH)
 
+set(codegen_emoji_sources
+PRIVATE
+    codegen/emoji/data.cpp
+    codegen/emoji/data.h
+    codegen/emoji/generator.cpp
+    codegen/emoji/generator.h
+    codegen/emoji/main.cpp
+    codegen/emoji/options.cpp
+    codegen/emoji/options.h
+    codegen/emoji/replaces.cpp
+    codegen/emoji/replaces.h
+)
+nice_target_sources(codegen_emoji ${src_loc} "${codegen_emoji_sources}")
+
 target_include_directories(codegen_emoji
 PUBLIC
     ${src_loc}
-)
-
-target_sources(codegen_emoji
-PRIVATE
-    ${src_loc}/codegen/emoji/data.cpp
-    ${src_loc}/codegen/emoji/data.h
-    ${src_loc}/codegen/emoji/generator.cpp
-    ${src_loc}/codegen/emoji/generator.h
-    ${src_loc}/codegen/emoji/main.cpp
-    ${src_loc}/codegen/emoji/options.cpp
-    ${src_loc}/codegen/emoji/options.h
-    ${src_loc}/codegen/emoji/replaces.cpp
-    ${src_loc}/codegen/emoji/replaces.h
 )
 
 target_link_libraries(codegen_emoji

@@ -3,22 +3,23 @@ init_target(codegen_numbers)
 
 get_filename_component(src_loc ../.. REALPATH)
 
+set(codegen_numbers_sources
+PRIVATE
+    codegen/numbers/generator.cpp
+    codegen/numbers/generator.h
+    codegen/numbers/main.cpp
+    codegen/numbers/options.cpp
+    codegen/numbers/options.h
+    codegen/numbers/parsed_file.cpp
+    codegen/numbers/parsed_file.h
+    codegen/numbers/processor.cpp
+    codegen/numbers/processor.h
+)
+nice_target_sources(codegen_numbers ${src_loc} "${codegen_numbers_sources}")
+
 target_include_directories(codegen_numbers
 PUBLIC
     ${src_loc}
-)
-
-target_sources(codegen_numbers
-PRIVATE
-    ${src_loc}/codegen/numbers/generator.cpp
-    ${src_loc}/codegen/numbers/generator.h
-    ${src_loc}/codegen/numbers/main.cpp
-    ${src_loc}/codegen/numbers/options.cpp
-    ${src_loc}/codegen/numbers/options.h
-    ${src_loc}/codegen/numbers/parsed_file.cpp
-    ${src_loc}/codegen/numbers/parsed_file.h
-    ${src_loc}/codegen/numbers/processor.cpp
-    ${src_loc}/codegen/numbers/processor.h
 )
 
 target_link_libraries(codegen_numbers
