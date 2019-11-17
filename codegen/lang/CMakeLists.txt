@@ -26,5 +26,4 @@ target_link_libraries(codegen_lang
 PUBLIC
     codegen_common
     external_qt
-    common
 )

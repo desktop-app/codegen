@@ -31,5 +31,4 @@ PUBLIC
     codegen_common
     lib_base
     lib_crl
-    common
 )
