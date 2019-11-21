@@ -24,6 +24,6 @@ PUBLIC
 
 target_link_libraries(codegen_numbers
 PUBLIC
-    codegen_common
-    external_qt
+    desktop-app::codegen_common
+    desktop-app::external_qt
 )

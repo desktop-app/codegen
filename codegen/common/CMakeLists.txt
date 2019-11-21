@@ -1,4 +1,5 @@
 add_library(codegen_common OBJECT)
+add_library(desktop-app::codegen_common ALIAS codegen_common)
 init_target(codegen_common "(codegen)")
 
 get_filename_component(src_loc ../.. REALPATH)
@@ -27,5 +28,5 @@ PUBLIC
 
 target_link_libraries(codegen_common
 PUBLIC
-    external_qt
+    desktop-app::external_qt
 )

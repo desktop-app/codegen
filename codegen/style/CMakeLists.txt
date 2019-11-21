@@ -28,7 +28,7 @@ PUBLIC
 
 target_link_libraries(codegen_style
 PUBLIC
-    codegen_common
-    lib_base
-    lib_crl
+    desktop-app::codegen_common
+    desktop-app::lib_base
+    desktop-app::lib_crl
 )
