@@ -181,16 +181,11 @@ int Generator::generate() {
 	}
 #endif // SUPPORT_IMAGE_GENERATION
 
-	if (!writeSource()) {
-		return -1;
-	}
-	if (!writeHeader()) {
-		return -1;
-	}
-	if (!writeSuggestionsSource()) {
-		return -1;
-	}
-	if (!writeSuggestionsHeader()) {
+	if (!writeSource()
+		|| !writeHeader()
+		|| !writeSuggestionsSource()
+		|| !writeSuggestionsHeader()
+		|| !common::TouchTimestamp(outputPath_)) {
 		return -1;
 	}
 

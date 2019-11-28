@@ -55,10 +55,9 @@ bool Processor::write(const LangPack &langpack) const {
 	};
 
 	Generator generator(langpack, dstFilePath, project);
-	if (!generator.writeHeader()) {
-		return false;
-	}
-	if (!generator.writeSource()) {
+	if (!generator.writeHeader()
+		|| !generator.writeSource()
+		|| !common::TouchTimestamp(dstFilePath)) {
 		return false;
 	}
 	return true;

@@ -105,5 +105,10 @@ bool CppFile::finalize() {
 	return true;
 }
 
+bool TouchTimestamp(const QString &basepath) {
+	auto file = QFile(basepath + ".timestamp");
+	return file.open(QIODevice::WriteOnly) && (file.write("1", 1) == 1);
+}
+
 } // namespace common
 } // namespace codegen

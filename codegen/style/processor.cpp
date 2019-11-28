@@ -60,10 +60,9 @@ bool Processor::write(const structure::Module &module) const {
 	};
 
 	Generator generator(module, dstFilePath, project, options_.isPalette);
-	if (!generator.writeHeader()) {
-		return false;
-	}
-	if (!generator.writeSource()) {
+	if (!generator.writeHeader()
+		|| !generator.writeSource()
+		|| !common::TouchTimestamp(dstFilePath)) {
 		return false;
 	}
 	return true;

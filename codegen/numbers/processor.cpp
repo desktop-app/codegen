@@ -55,10 +55,9 @@ bool Processor::write(const Rules &rules) const {
 	};
 
 	Generator generator(rules, dstFilePath, project);
-	if (!generator.writeHeader()) {
-		return false;
-	}
-	if (!generator.writeSource()) {
+	if (!generator.writeHeader()
+		|| !generator.writeSource()
+		|| !common::TouchTimestamp(dstFilePath)) {
 		return false;
 	}
 

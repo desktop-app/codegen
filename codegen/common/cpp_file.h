@@ -52,5 +52,7 @@ private:
 
 };
 
+bool TouchTimestamp(const QString &basepath);
+
 } // namespace common
 } // namespace codegen
