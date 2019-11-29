@@ -29,8 +29,9 @@ Processor::Processor(const Options &options)
 }
 
 int Processor::launch() {
+	auto cache = std::map<QString, std::shared_ptr<const structure::Module>>();
 	for (auto i = 0; i != options_.inputPaths.size(); ++i) {
-		auto parser = ParsedFile(options_, i);
+		auto parser = ParsedFile(cache, options_, i);
 		if (!parser.read()) {
 			return -1;
 		}

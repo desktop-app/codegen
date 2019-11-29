@@ -25,7 +25,7 @@ public:
 		return fullpath_;
 	}
 
-	void addIncluded(std::unique_ptr<Module> &&value);
+	void addIncluded(std::shared_ptr<const Module> value);
 
 	bool hasIncludes() const {
 		return !included_.empty();
@@ -85,7 +85,7 @@ public:
 
 private:
 	QString fullpath_;
-	std::vector<std::unique_ptr<Module>> included_;
+	std::vector<std::shared_ptr<const Module>> included_;
 	QList<Struct> structs_;
 	QList<Variable> variables_;
 	QMap<QString, int> structsByName_;

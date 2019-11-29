@@ -146,10 +146,12 @@ Modifier GetModifier(const QString &name) {
 }
 
 ParsedFile::ParsedFile(
+	std::map<QString, std::shared_ptr<const structure::Module>> &includeCache,
 	const Options &options,
 	int index,
 	std::vector<QString> includeStack)
-: filePath_(findInputFile(options, index))
+: includeCache_(includeCache)
+, filePath_(findInputFile(options, index))
 , file_(filePath_)
 , options_(options)
 , includeStack_(includeStack) {
@@ -207,20 +209,29 @@ common::LogStream ParsedFile::logErrorTypeMismatch() {
 	return logError(kErrorTypeMismatch) << "type mismatch: ";
 }
 
-ParsedFile::ModulePtr ParsedFile::readIncluded() {
+std::shared_ptr<const structure::Module> ParsedFile::readIncluded() {
 	if (auto usingFile = assertNextToken(BasicType::String)) {
 		if (assertNextToken(BasicType::Semicolon)) {
+			const auto includedName = tokenValue(usingFile);
+			const auto i = includeCache_.find(includedName);
+			if (i != includeCache_.end()) {
+				return i->second;
+			}
 			auto includeStack = includeStack_;
 			includeStack.push_back(filePath_);
 			ParsedFile included(
-				includedOptions(tokenValue(usingFile)),
+				includeCache_,
+				includedOptions(includedName),
 				0,
 				includeStack);
-			if (included.read()) {
-				return included.getResult();
-			} else {
+			if (!included.read()) {
 				logError(kErrorInIncluded) << "error while parsing '" << tokenValue(usingFile).toStdString() << "'";
+				return nullptr;
 			}
+			return includeCache_.emplace(
+				includedName,
+				included.getResult()
+			).first->second;
 		}
 	}
 	return nullptr;

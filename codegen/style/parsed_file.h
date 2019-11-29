@@ -23,7 +23,8 @@ Modifier GetModifier(const QString &name);
 // Parses an input file to the internal struct.
 class ParsedFile {
 public:
-	explicit ParsedFile(
+	ParsedFile(
+		std::map<QString, std::shared_ptr<const structure::Module>> &includeCache,
 		const Options &options,
 		int index = 0,
 		std::vector<QString> includeStack = {});
@@ -32,8 +33,7 @@ public:
 
 	bool read();
 
-	using ModulePtr = std::unique_ptr<structure::Module>;
-	ModulePtr getResult() {
+	std::unique_ptr<const structure::Module> getResult() {
 		return std::move(module_);
 	}
 
@@ -60,7 +60,7 @@ private:
 	}
 
 	// Helper methods for context-dependent reading.
-	ModulePtr readIncluded();
+	std::shared_ptr<const structure::Module> readIncluded();
 	structure::Struct readStruct(const QString &name);
 	structure::Variable readVariable(const QString &name);
 
@@ -105,11 +105,13 @@ private:
 	// Compose context-dependent full name.
 	structure::FullName composeFullName(const QString &name);
 
+	std::map<QString, std::shared_ptr<const structure::Module>> includeCache_;
+
 	QString filePath_;
 	common::BasicTokenizedFile file_;
 	Options options_;
 	bool failed_ = false;
-	ModulePtr module_;
+	std::unique_ptr<structure::Module> module_;
 
 	std::vector<QString> includeStack_;
 

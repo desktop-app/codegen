@@ -20,7 +20,7 @@ QString fullNameKey(const FullName &name) {
 Module::Module(const QString &fullpath) : fullpath_(fullpath) {
 }
 
-void Module::addIncluded(std::unique_ptr<Module> &&value) {
+void Module::addIncluded(std::shared_ptr<const Module> value) {
 	included_.push_back(std::move(value));
 }
 
