@@ -13,7 +13,7 @@ int main(int argc, char *argv[]) {
 	QCoreApplication app(argc, argv);
 
 	auto options = codegen::style::parseOptions();
-	if (options.inputPath.isEmpty()) {
+	if (options.inputPaths.isEmpty()) {
 		return -1;
 	}
 

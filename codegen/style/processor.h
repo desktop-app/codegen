@@ -33,7 +33,6 @@ public:
 private:
 	bool write(const structure::Module &module) const;
 
-	std::unique_ptr<ParsedFile> parser_;
 	const Options &options_;
 
 };

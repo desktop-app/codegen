@@ -15,7 +15,8 @@ namespace style {
 struct Options {
 	QStringList includePaths = { "." };
 	QString outputPath = ".";
-	QString inputPath;
+	QString timestampPath;
+	QStringList inputPaths;
 	bool isPalette = false;
 };
 

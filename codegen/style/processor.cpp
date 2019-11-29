@@ -25,20 +25,24 @@ QString destFileBaseName(const structure::Module &module) {
 } // namespace
 
 Processor::Processor(const Options &options)
-: parser_(std::make_unique<ParsedFile>(options))
-, options_(options) {
+: options_(options) {
 }
 
 int Processor::launch() {
-	if (!parser_->read()) {
+	for (auto i = 0; i != options_.inputPaths.size(); ++i) {
+		auto parser = ParsedFile(options_, i);
+		if (!parser.read()) {
+			return -1;
+		}
+
+		const auto module = parser.getResult();
+		if (!write(*module)) {
+			return -1;
+		}
+	}
+	if (!common::TouchTimestamp(options_.timestampPath)) {
 		return -1;
 	}
-
-	auto module = parser_->getResult();
-	if (!write(*module)) {
-		return -1;
-	}
-
 	return 0;
 }
 
@@ -60,9 +64,7 @@ bool Processor::write(const structure::Module &module) const {
 	};
 
 	Generator generator(module, dstFilePath, project, options_.isPalette);
-	if (!generator.writeHeader()
-		|| !generator.writeSource()
-		|| !common::TouchTimestamp(dstFilePath)) {
+	if (!generator.writeHeader() || !generator.writeSource()) {
 		return false;
 	}
 	return true;

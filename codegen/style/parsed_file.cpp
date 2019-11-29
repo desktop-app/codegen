@@ -33,14 +33,14 @@ constexpr int kErrorIconDuplicate      = 807;
 constexpr int kErrorBadIconModifier    = 808;
 constexpr int kErrorCyclicDependency   = 809;
 
-QString findInputFile(const Options &options) {
+QString findInputFile(const Options &options, int index) {
 	for (const auto &dir : options.includePaths) {
-		QString tryPath = QDir(dir).absolutePath() + '/' + options.inputPath;
+		QString tryPath = QDir(dir).absolutePath() + '/' + options.inputPaths[index];
 		if (QFileInfo(tryPath).exists()) {
 			return tryPath;
 		}
 	}
-	return options.inputPath;
+	return options.inputPaths[index];
 }
 
 QString tokenValue(const BasicToken &token) {
@@ -147,8 +147,9 @@ Modifier GetModifier(const QString &name) {
 
 ParsedFile::ParsedFile(
 	const Options &options,
+	int index,
 	std::vector<QString> includeStack)
-: filePath_(findInputFile(options))
+: filePath_(findInputFile(options, index))
 , file_(filePath_)
 , options_(options)
 , includeStack_(includeStack) {
@@ -213,6 +214,7 @@ ParsedFile::ModulePtr ParsedFile::readIncluded() {
 			includeStack.push_back(filePath_);
 			ParsedFile included(
 				includedOptions(tokenValue(usingFile)),
+				0,
 				includeStack);
 			if (included.read()) {
 				return included.getResult();
@@ -843,7 +845,7 @@ BasicToken ParsedFile::assertNextToken(BasicToken::Type type) {
 
 Options ParsedFile::includedOptions(const QString &filepath) {
 	auto result = options_;
-	result.inputPath = filepath;
+	result.inputPaths = QStringList() << filepath;
 	result.includePaths[0] = QFileInfo(filePath_).dir().absolutePath();
 	result.isPalette = (QFileInfo(filepath).suffix() == "palette");
 	return result;

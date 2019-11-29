@@ -53,6 +53,17 @@ Options parseOptions() {
 		} else if (arg.startsWith("-o")) {
 			result.outputPath = arg.mid(2);
 
+		// Timestamp path
+		} else if (arg == "-t") {
+			if (++i == count) {
+				logError(kErrorOutputPathExpected, "Command Line") << "timestamp path expected after -t";
+				return Options();
+			} else {
+				result.timestampPath = args.at(i);
+			}
+		} else if (arg.startsWith("-t")) {
+			result.timestampPath = arg.mid(2);
+
 		// Working path
 		} else if (arg == "-w") {
 			if (++i == count) {
@@ -66,19 +77,19 @@ Options parseOptions() {
 
 		// Input path
 		} else {
-			if (result.inputPath.isEmpty()) {
-				result.inputPath = arg;
-			} else {
-				logError(kErrorSingleInputPathExpected, "Command Line") << "only one input path expected";
-				return Options();
-			}
+			result.inputPaths.push_back(arg);
 		}
 	}
-	if (result.inputPath.isEmpty()) {
+	if (result.timestampPath.isEmpty()) {
+		logError(kErrorInputPathExpected, "Command Line") << "timestamp path expected";
+		return Options();
+	}
+	if (result.inputPaths.isEmpty()) {
 		logError(kErrorInputPathExpected, "Command Line") << "input path expected";
 		return Options();
 	}
-	result.isPalette = (QFileInfo(result.inputPath).suffix() == "palette");
+	result.isPalette = (result.inputPaths.size() == 1)
+		&& (QFileInfo(result.inputPaths.front()).suffix() == "palette");
 	return result;
 }
 

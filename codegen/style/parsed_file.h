@@ -25,6 +25,7 @@ class ParsedFile {
 public:
 	explicit ParsedFile(
 		const Options &options,
+		int index = 0,
 		std::vector<QString> includeStack = {});
 	ParsedFile(const ParsedFile &other) = delete;
 	ParsedFile &operator=(const ParsedFile &other) = delete;
