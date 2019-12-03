@@ -4,7 +4,7 @@ init_target(codegen_common "(codegen)")
 
 get_filename_component(src_loc ../.. REALPATH)
 
-set(codegen_common_sources
+nice_target_sources(codegen_common ${src_loc}
 PRIVATE
     codegen/common/basic_tokenized_file.cpp
     codegen/common/basic_tokenized_file.h
@@ -19,7 +19,6 @@ PRIVATE
     codegen/common/logging.cpp
     codegen/common/logging.h
 )
-nice_target_sources(codegen_common ${src_loc} "${codegen_common_sources}")
 
 target_include_directories(codegen_common
 PUBLIC

@@ -3,7 +3,7 @@ init_target(codegen_lang "(codegen)")
 
 get_filename_component(src_loc ../.. REALPATH)
 
-set(codegen_lang_sources
+nice_target_sources(codegen_lang ${src_loc}
 PRIVATE
     codegen/lang/generator.cpp
     codegen/lang/generator.h
@@ -15,7 +15,6 @@ PRIVATE
     codegen/lang/processor.cpp
     codegen/lang/processor.h
 )
-nice_target_sources(codegen_lang ${src_loc} "${codegen_lang_sources}")
 
 target_include_directories(codegen_lang
 PUBLIC

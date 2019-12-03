@@ -3,7 +3,7 @@ init_target(codegen_numbers "(codegen)")
 
 get_filename_component(src_loc ../.. REALPATH)
 
-set(codegen_numbers_sources
+nice_target_sources(codegen_numbers ${src_loc}
 PRIVATE
     codegen/numbers/generator.cpp
     codegen/numbers/generator.h
@@ -15,7 +15,6 @@ PRIVATE
     codegen/numbers/processor.cpp
     codegen/numbers/processor.h
 )
-nice_target_sources(codegen_numbers ${src_loc} "${codegen_numbers_sources}")
 
 target_include_directories(codegen_numbers
 PUBLIC

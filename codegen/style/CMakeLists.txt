@@ -3,7 +3,7 @@ init_target(codegen_style "(codegen)")
 
 get_filename_component(src_loc ../.. REALPATH)
 
-set(codegen_style_sources
+nice_target_sources(codegen_style ${src_loc}
 PRIVATE
     codegen/style/generator.cpp
     codegen/style/generator.h
@@ -19,7 +19,6 @@ PRIVATE
     codegen/style/structure_types.cpp
     codegen/style/structure_types.h
 )
-nice_target_sources(codegen_style ${src_loc} "${codegen_style_sources}")
 
 target_include_directories(codegen_style
 PUBLIC
