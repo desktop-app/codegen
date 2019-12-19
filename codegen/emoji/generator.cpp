@@ -197,14 +197,14 @@ constexpr auto kEmojiRowsInFile = 16;
 constexpr auto kEmojiQuality = 99;
 constexpr auto kEmojiSize = 72;
 constexpr auto kEmojiFontSize = 72;
-constexpr auto kEmojiDelta = 67;
+constexpr auto kEmojiDelta = 67 - 4;
 constexpr auto kScaleFromLarge = true;
 
 #ifdef SUPPORT_IMAGE_GENERATION
 QImage Generator::generateImage(int imageIndex) {
 	constexpr auto kLargeEmojiSize = 180;
 	constexpr auto kLargeEmojiFontSize = 180;
-	constexpr auto kLargeEmojiDelta = 167;
+	constexpr auto kLargeEmojiDelta = 167 - 9;
 
 	auto emojiCount = int(data_.list.size());
 	auto columnsCount = kEmojiInRow;
