@@ -2054,6 +2054,13 @@ void appendCategory(
 				return;
 			}
 			append(baseId, *from++);
+			// A few uncolored emoji contain two kPostfix.
+			// (:(wo)man_lifting_weights:, :(wo)man_golfing:
+			//  :(wo)man_bouncing_ball:, :(wo)man_detective:)
+			// But colored emoji should have only one kPostfix.
+			if (std::count(from, to, kPostfix) == 2 && *from == kPostfix) {
+				from++;
+			}
 			for (auto color : Colors) {
 				auto colored = Emoji();
 				colored.id = baseId;
