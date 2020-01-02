@@ -294,7 +294,7 @@ bool Generator::writeImages() {
 				}
 			}
 		}
-        if (needResave) {
+		if (needResave) {
 			QFile file(filename);
 			if (!file.open(QIODevice::WriteOnly)) {
 				logDataError() << "Could not open 'emoji" << postfix.toStdString() << ".webp'.";
