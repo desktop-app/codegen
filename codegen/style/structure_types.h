@@ -80,6 +80,7 @@ struct font {
 		Bold      = 0x01,
 		Italic    = 0x02,
 		Underline = 0x04,
+		Semibold  = 0x10,
 	};
 	std::string family;
 	int size;

@@ -680,6 +680,9 @@ structure::Value ParsedFile::readFontValue() {
 					} else if (tokenValue(formatToken) == "underline") {
 						flags |= structure::data::font::Underline;
 						continue;
+					} else if (tokenValue(formatToken) == "semibold") {
+						flags |= structure::data::font::Semibold;
+						continue;
 					} else {
 						file_.putBack();
 					}
