@@ -14,7 +14,7 @@
 #include <QtGui/QPainter>
 #include <QtCore/QDir>
 
-#ifdef SUPPORT_IMAGE_GENERATION
+#if defined SUPPORT_IMAGE_GENERATION && !defined DESKTOP_APP_USE_PACKAGED
 Q_IMPORT_PLUGIN(QWebpPlugin)
 #ifdef Q_OS_MAC
 Q_IMPORT_PLUGIN(QCocoaIntegrationPlugin)
