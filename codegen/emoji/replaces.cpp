@@ -7,6 +7,7 @@
 #include "codegen/emoji/replaces.h"
 
 #include "codegen/emoji/data.h"
+#include "codegen/emoji/data_old.h"
 #include <QtCore/QFile>
 #include <QtCore/QJsonDocument>
 #include <QtCore/QJsonObject>
@@ -308,10 +309,10 @@ Replaces PrepareReplaces(const QString &filename) {
 bool CheckAndConvertReplaces(Replaces &replaces, const Data &data) {
 	auto result = Replaces(replaces.filename);
 	auto sorted = QMap<Id, Replace>();
-	auto findId = [&data](const Id &id) {
+	auto findId = [&](const Id &id) {
 		return data.map.find(id) != data.map.cend();
 	};
-	auto findAndSort = [findId, &data, &sorted](Id id, const Replace &replace) {
+	auto findAndSort = [&](Id id, const Replace &replace) {
 		if (!findId(id)) {
 			id.replace(QChar(0xFE0F), QString());
 			if (!findId(id)) {
@@ -328,6 +329,8 @@ bool CheckAndConvertReplaces(Replaces &replaces, const Data &data) {
 		return true;
 	};
 
+	auto success = true;
+	
 	// Find all replaces in data.map, adjust id if necessary.
 	// Store all replaces in sorted map to find them fast afterwards.
 	auto maleModifier = ComposeString({ 0x200D, 0x2642, 0xFE0F });
@@ -348,8 +351,14 @@ bool CheckAndConvertReplaces(Replaces &replaces, const Data &data) {
 			}
 		} else if (findId(replace.id + maleModifier)) {
 			if (findId(replace.id + femaleModifier)) {
-				logReplacesError(replaces.filename) << "Replace '" << replace.replacement.toStdString() << "' ambiguous.";
-				return false;
+				logReplacesError(replaces.filename)
+					<< "Replace '"
+					<< replace.replacement.toStdString()
+					<< "' ("
+					<< replace.id.toStdString()
+					<< ") ambiguous.";
+				success = false;
+				continue;
 			} else {
 				findAndSort(replace.id + maleModifier, replace);
 				continue;
@@ -357,8 +366,14 @@ bool CheckAndConvertReplaces(Replaces &replaces, const Data &data) {
 		} else if (findAndSort(replace.id + femaleModifier, replace)) {
 			continue;
 		}
-		logReplacesError(replaces.filename) << "Replace '" << replace.replacement.toStdString() << "' not found.";
-		return false;
+		logReplacesError(replaces.filename)
+			<< "Replace '"
+			<< replace.replacement.toStdString()
+			<< "' ("
+			<< replace.id.toStdString()
+			<< ") not found.";
+		success = false;
+		continue;
 	}
 
 	// Go through all categories and put all replaces in order of emoji in categories.
@@ -376,10 +391,13 @@ bool CheckAndConvertReplaces(Replaces &replaces, const Data &data) {
 	}
 	if (result.list.size() != replaces.list.size()) {
 		logReplacesError(replaces.filename) << "Some were not found.";
-		return false;
+		success = false;
 	}
 	if (!sorted.isEmpty()) {
 		logReplacesError(replaces.filename) << "Weird.";
+		success = false;
+	}
+	if (!success) {
 		return false;
 	}
 	replaces = std::move(result);

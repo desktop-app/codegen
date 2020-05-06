@@ -18,6 +18,7 @@ namespace emoji {
 
 struct Options {
 	QString outputPath = ".";
+	QString dataPath;
 	QString replacesPath;
 #ifdef SUPPORT_IMAGE_GENERATION
 	bool writeImages = false;

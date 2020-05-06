@@ -24,6 +24,7 @@ struct Emoji {
 	Id id;
 	bool postfixed = false;
 	bool variated = false;
+	//bool doubleVariated = false;
 	bool colored = false;
 };
 
@@ -34,11 +35,11 @@ struct Data {
 	std::vector<std::vector<int>> categories;
 	std::map<QString, int, std::greater<QString>> replaces;
 };
-Data PrepareData();
+[[nodiscard]] Data PrepareData(const QString &dataPath);
 
 constexpr auto kPostfix = 0xFE0FU;
 
-common::LogStream logDataError();
+[[nodiscard]] common::LogStream logDataError();
 
 } // namespace emoji
 } // namespace codegen

@@ -7,6 +7,10 @@ nice_target_sources(codegen_emoji ${src_loc}
 PRIVATE
     codegen/emoji/data.cpp
     codegen/emoji/data.h
+    codegen/emoji/data_old.cpp
+    codegen/emoji/data_old.h
+    codegen/emoji/data_read.cpp
+    codegen/emoji/data_read.h
     codegen/emoji/generator.cpp
     codegen/emoji/generator.h
     codegen/emoji/main.cpp

@@ -154,7 +154,7 @@ Generator::Generator(const Options &options) : project_(Project)
 #ifdef SUPPORT_IMAGE_GENERATION
 , writeImages_(options.writeImages)
 #endif // SUPPORT_IMAGE_GENERATION
-, data_(PrepareData())
+, data_(PrepareData(options.dataPath))
 , replaces_(PrepareReplaces(options.replacesPath)) {
 	QDir dir(options.outputPath);
 	if (!dir.mkpath(".")) {

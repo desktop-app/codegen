@@ -42,6 +42,8 @@ Options parseOptions() {
 		} else if (arg == "--images") {
 			result.writeImages = true;
 #endif // SUPPORT_IMAGE_GENERATION
+		} else if (result.dataPath.isEmpty()) {
+			result.dataPath = arg;
 		} else if (result.replacesPath.isEmpty()) {
 			result.replacesPath = arg;
 		} else {
