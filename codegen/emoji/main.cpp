@@ -10,17 +10,18 @@
 #include "codegen/emoji/generator.h"
 
 int main(int argc, char *argv[]) {
-#ifdef SUPPORT_IMAGE_GENERATION
-#ifndef Q_OS_MAC
-#error "Image generation is supported only on macOS"
-#endif // Q_OS_MAC
-	QGuiApplication app(argc, argv);
-#else // SUPPORT_IMAGE_GENERATION
-	QCoreApplication app(argc, argv);
-#endif // SUPPORT_IMAGE_GENERATION
-
-	auto options = codegen::emoji::parseOptions();
-
+	const auto generateImages = [&] {
+		for (auto i = 0; i != argc; ++i) {
+			if (argv[i] == std::string("--images")) {
+				return true;
+			}
+		}
+		return false;
+	}();
+	const auto app = generateImages
+		? std::make_unique<QGuiApplication>(argc, argv)
+		: std::make_unique<QCoreApplication>(argc, argv);
+	const auto options = codegen::emoji::parseOptions();
 	codegen::emoji::Generator generator(options);
 	return generator.generate();
 }

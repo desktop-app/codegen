@@ -28,10 +28,8 @@ public:
 	int generate();
 
 private:
-#ifdef SUPPORT_IMAGE_GENERATION
-	QImage generateImage(int imageIndex);
+	[[nodiscard]] QImage generateImage(int imageIndex);
 	bool writeImages();
-#endif // SUPPORT_IMAGE_GENERATION
 
 	bool writeSource();
 	bool writeHeader();
@@ -59,9 +57,7 @@ private:
 
 	const common::ProjectInfo &project_;
 	int colorsCount_ = 0;
-#ifdef SUPPORT_IMAGE_GENERATION
-	bool writeImages_ = false;
-#endif // SUPPORT_IMAGE_GENERATION
+	QString writeImages_;
 	QString outputPath_;
 	QString spritePath_;
 	std::unique_ptr<common::CppFile> source_;

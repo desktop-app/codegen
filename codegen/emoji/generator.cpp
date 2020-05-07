@@ -14,7 +14,7 @@
 #include <QtGui/QPainter>
 #include <QtCore/QDir>
 
-#if defined SUPPORT_IMAGE_GENERATION && !defined DESKTOP_APP_USE_PACKAGED
+#ifndef DESKTOP_APP_USE_PACKAGED
 Q_IMPORT_PLUGIN(QWebpPlugin)
 #ifdef Q_OS_MAC
 Q_IMPORT_PLUGIN(QCocoaIntegrationPlugin)
@@ -23,7 +23,7 @@ Q_IMPORT_PLUGIN(QWindowsIntegrationPlugin)
 #else // !Q_OS_MAC && !Q_OS_WIN
 Q_IMPORT_PLUGIN(QXcbIntegrationPlugin)
 #endif // !Q_OS_MAC && !Q_OS_WIN
-#endif // SUPPORT_IMAGE_GENERATION
+#endif // DESKTOP_APP_USE_PACKAGED
 
 namespace codegen {
 namespace emoji {
@@ -151,9 +151,7 @@ uint32 countCrc32(const void *data, std::size_t size) {
 } // namespace
 
 Generator::Generator(const Options &options) : project_(Project)
-#ifdef SUPPORT_IMAGE_GENERATION
 , writeImages_(options.writeImages)
-#endif // SUPPORT_IMAGE_GENERATION
 , data_(PrepareData(options.dataPath))
 , replaces_(PrepareReplaces(options.replacesPath)) {
 	QDir dir(options.outputPath);
@@ -173,22 +171,15 @@ Generator::Generator(const Options &options) : project_(Project)
 int Generator::generate() {
 	if (data_.list.empty() || replaces_.list.isEmpty()) {
 		return -1;
-	}
-
-#ifdef SUPPORT_IMAGE_GENERATION
-	if (writeImages_) {
+	} else if (!writeImages_.isEmpty()) {
 		return writeImages() ? 0 : -1;
-	}
-#endif // SUPPORT_IMAGE_GENERATION
-
-	if (!writeSource()
+	} else if (!writeSource()
 		|| !writeHeader()
 		|| !writeSuggestionsSource()
 		|| !writeSuggestionsHeader()
 		|| !common::TouchTimestamp(outputPath_)) {
 		return -1;
 	}
-
 	return 0;
 }
 
@@ -199,12 +190,95 @@ constexpr auto kEmojiSize = 72;
 constexpr auto kEmojiFontSize = 72;
 constexpr auto kEmojiDelta = 67 - 4;
 constexpr auto kScaleFromLarge = true;
+constexpr auto kLargeEmojiSize = 180;
+constexpr auto kLargeEmojiFontSize = 180;
+constexpr auto kLargeEmojiDelta = 167 - 9;
 
-#ifdef SUPPORT_IMAGE_GENERATION
+enum class ImageType {
+	Mac,
+	Twemoji,
+};
+
+[[nodiscard]] ImageType GuessImageType(QString tag) {
+	if (tag.indexOf("twemoji") >= 0) {
+		return ImageType::Twemoji;
+	}
+	return ImageType::Mac;
+}
+
+bool PaintSingleMac(QPainter &p, QRect targetRect, const Emoji &data, QFont &font, QImage &singleImage) {
+	singleImage.fill(Qt::transparent);
+	{
+		QPainter q(&singleImage);
+		q.setPen(QColor(0, 0, 0, 255));
+		q.setFont(font);
+		const auto delta = kScaleFromLarge ? kLargeEmojiDelta : kEmojiDelta;
+		q.drawText(2, 2 + delta, data.id);
+	}
+	auto sourceRect = computeSourceRect(singleImage);
+	if (sourceRect.isEmpty()) {
+		return false;
+	}
+	if (kScaleFromLarge) {
+		p.drawImage(targetRect, singleImage.copy(sourceRect).scaled(kEmojiSize, kEmojiSize, Qt::IgnoreAspectRatio, Qt::SmoothTransformation));
+	} else {
+		p.drawImage(targetRect, singleImage, sourceRect);
+	}
+	return true;
+}
+
+bool PaintSingleTwemoji(QPainter &p, QRect targetRect, const Emoji &data, const QString &base) {
+	auto nameParts = QStringList();
+	auto namePartsFull = QStringList();
+	for (auto i = 0; i != data.id.size(); ++i) {
+		uint ucs4 = data.id[i].unicode();
+		if (ucs4 == kPostfix) {
+			namePartsFull.push_back(QString::number(ucs4, 16).toLower());
+			continue;
+		} else if (QChar::isHighSurrogate(ucs4) && i + 1 != data.id.size()) {
+			ushort low = data.id[++i].unicode();
+			if (QChar::isLowSurrogate(low)) {
+				ucs4 = QChar::surrogateToUcs4(ucs4, low);
+			} else {
+				return false;
+			}
+		}
+		nameParts.push_back(QString::number(ucs4, 16).toLower());
+		namePartsFull.push_back(QString::number(ucs4, 16).toLower());
+	}
+	const auto fillEmpty = [&] {
+		const auto column = targetRect.x() / targetRect.width();
+		const auto row = targetRect.y() / targetRect.height();
+		p.fillRect(targetRect, ((column + row) % 2) ? QColor(255, 0, 0, 255) : QColor(0, 255, 0, 255));
+	};
+	const auto name = nameParts.join('-');
+	const auto nameFull = namePartsFull.join('-');
+	const auto nameAdded = name + "-fe0f";
+	const auto image = [&] {
+		if (const auto result = QImage(base + '/' + name + ".png"); !result.isNull()) {
+			return result;
+		} else if (const auto full = QImage(base + '/' + nameFull + ".png"); !full.isNull()) {
+			return full;
+		}
+		return QImage(base + '/' + nameAdded + ".png");
+	}();
+	if (image.isNull()) {
+		std::cout << "NOT FOUND: " << name.toStdString() << std::endl;
+		fillEmpty();
+		return false;
+	} else if (image.width() != targetRect.width()
+		|| image.height() != targetRect.height()) {
+		std::cout << "BAD SIZE: " << name.toStdString() << std::endl;
+		fillEmpty();
+		return false;
+	} else {
+		p.drawImage(targetRect, image);
+	}
+	return true;
+}
+
 QImage Generator::generateImage(int imageIndex) {
-	constexpr auto kLargeEmojiSize = 180;
-	constexpr auto kLargeEmojiFontSize = 180;
-	constexpr auto kLargeEmojiDelta = 167 - 9;
+	const auto type = GuessImageType(writeImages_);
 
 	auto emojiCount = int(data_.list.size());
 	auto columnsCount = kEmojiInRow;
@@ -214,8 +288,21 @@ QImage Generator::generateImage(int imageIndex) {
 	auto sourceSize = kScaleFromLarge ? kLargeEmojiSize : kEmojiSize;
 
 	auto font = QGuiApplication::font();
-	font.setFamily(QStringLiteral("Apple Color Emoji"));
-	font.setPixelSize(kScaleFromLarge ? kLargeEmojiFontSize : kEmojiFontSize);
+	auto base = writeImages_;
+	if (type == ImageType::Mac) {
+		const auto family = QStringLiteral("Apple Color Emoji");
+		font.setFamily(family);
+		font.setPixelSize(kScaleFromLarge ? kLargeEmojiFontSize : kEmojiFontSize);
+		if (QFontInfo(font).family() != family) {
+			return QImage();
+		}
+	} else if (type == ImageType::Twemoji) {
+		if (!QDir(base).exists()) {
+			return QImage();
+		}
+	} else {
+		return QImage();
+	}
 
 	auto singleSize = 4 + sourceSize;
 	const auto inFileShift = (imageIndex * kEmojiInRow * kEmojiRowsInFile);
@@ -227,6 +314,7 @@ QImage Generator::generateImage(int imageIndex) {
 	auto rowsCount = (inFileCount / columnsCount) + ((inFileCount % columnsCount) ? 1 : 0);
 	auto emojiImage = QImage(columnsCount * kEmojiSize, rowsCount * kEmojiSize, QImage::Format_ARGB32);
 	emojiImage.fill(Qt::transparent);
+	auto skippedCount = 0;
 	auto singleImage = QImage(singleSize, singleSize, QImage::Format_ARGB32);
 	{
 		QPainter p(&emojiImage);
@@ -236,24 +324,15 @@ QImage Generator::generateImage(int imageIndex) {
 		auto row = 0;
 		for (auto i = 0; i != inFileCount; ++i) {
 			auto &emoji = data_.list[inFileShift + i];
-			{
-				singleImage.fill(Qt::transparent);
-
-				QPainter q(&singleImage);
-				q.setPen(QColor(0, 0, 0, 255));
-				q.setFont(font);
-				const auto delta = kScaleFromLarge ? kLargeEmojiDelta : kEmojiDelta;
-				q.drawText(2, 2 + delta, emoji.id);
-			}
-			auto sourceRect = computeSourceRect(singleImage);
-			if (sourceRect.isEmpty()) {
-				return QImage();
-			}
-			auto targetRect = QRect(column * kEmojiSize, row * kEmojiSize, kEmojiSize, kEmojiSize);
-			if (kScaleFromLarge) {
-				p.drawImage(targetRect, singleImage.copy(sourceRect).scaled(kEmojiSize, kEmojiSize, Qt::IgnoreAspectRatio, Qt::SmoothTransformation));
-			} else {
-				p.drawImage(targetRect, singleImage, sourceRect);
+			const auto targetRect = QRect(column * kEmojiSize, row * kEmojiSize, kEmojiSize, kEmojiSize);
+			if (type == ImageType::Mac) {
+				if (!PaintSingleMac(p, targetRect, emoji, font, singleImage)) {
+					++skippedCount;
+				}
+			} else if (type == ImageType::Twemoji) {
+				if (!PaintSingleTwemoji(p, targetRect, emoji, base)) {
+					++skippedCount;
+				}
 			}
 			++column;
 			if (column == columnsCount) {
@@ -262,7 +341,7 @@ QImage Generator::generateImage(int imageIndex) {
 			}
 		}
 	}
-	return emojiImage;
+	return (skippedCount > 0) ? QImage() : emojiImage;
 }
 
 bool Generator::writeImages() {
@@ -308,9 +387,8 @@ bool Generator::writeImages() {
 		}
 		++imageIndex;
 	}
-	return true;
+	return (imageIndex * kEmojiInRow * kEmojiRowsInFile >= data_.list.size());
 }
-#endif // SUPPORT_IMAGE_GENERATION
 
 bool Generator::writeSource() {
 	source_ = std::make_unique<common::CppFile>(outputPath_ + ".cpp", project_);

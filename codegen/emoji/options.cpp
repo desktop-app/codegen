@@ -38,10 +38,13 @@ Options parseOptions() {
 			}
 		} else if (arg.startsWith("-o")) {
 			result.outputPath = arg.mid(2);
-#ifdef SUPPORT_IMAGE_GENERATION
 		} else if (arg == "--images") {
-			result.writeImages = true;
-#endif // SUPPORT_IMAGE_GENERATION
+			if (++i == count) {
+				logError(kErrorOutputPathExpected, "Command Line") << "images argument expected after --images";
+				return Options();
+			} else {
+				result.writeImages = args.at(i);
+			}
 		} else if (result.dataPath.isEmpty()) {
 			result.dataPath = arg;
 		} else if (result.replacesPath.isEmpty()) {
