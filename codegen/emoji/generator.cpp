@@ -191,17 +191,24 @@ constexpr auto kEmojiFontSize = 72;
 constexpr auto kEmojiDelta = 67 - 4;
 constexpr auto kScaleFromLarge = true;
 constexpr auto kLargeEmojiSize = 180;
-constexpr auto kLargeEmojiFontSize = 180;
-constexpr auto kLargeEmojiDelta = 167 - 9;
+constexpr auto kLargeEmojiFontSizeMac = 180;
+constexpr auto kLargeEmojiDeltaMac = 167 - 9;
+constexpr auto kEmojiShiftMac = 0;
+constexpr auto kLargeEmojiFontSizeAndroid = 178;
+constexpr auto kLargeEmojiDeltaAndroid = 140;
+constexpr auto kEmojiShiftAndroid = -4;
 
 enum class ImageType {
 	Mac,
+	Android,
 	Twemoji,
 	JoyPixels,
 };
 
 [[nodiscard]] ImageType GuessImageType(QString tag) {
-	if (tag.indexOf("twemoji") >= 0) {
+	if (tag.indexOf("NotoColorEmoji") >= 0) {
+		return ImageType::Android;
+	} else if (tag.indexOf("twemoji") >= 0) {
 		return ImageType::Twemoji;
 	} else if (tag.indexOf("joypixels") >= 0) {
 		return ImageType::JoyPixels;
@@ -209,17 +216,25 @@ enum class ImageType {
 	return ImageType::Mac;
 }
 
-bool PaintSingleMac(QPainter &p, QRect targetRect, const Emoji &data, QFont &font, QImage &singleImage) {
+bool PaintSingleFromFont(QPainter &p, QRect targetRect, const Emoji &data, QFont &font, ImageType type, QImage &singleImage) {
 	singleImage.fill(Qt::transparent);
 	{
 		QPainter q(&singleImage);
 		q.setPen(QColor(0, 0, 0, 255));
 		q.setFont(font);
-		const auto delta = kScaleFromLarge ? kLargeEmojiDelta : kEmojiDelta;
-		q.drawText(2, 2 + delta, data.id);
+		const auto delta = !kScaleFromLarge
+			? kEmojiDelta
+			: (type == ImageType::Mac)
+			? kLargeEmojiDeltaMac
+			: kLargeEmojiDeltaAndroid;
+		const auto shift = (type == ImageType::Mac)
+			? kEmojiShiftMac
+			: kEmojiShiftAndroid;
+		q.drawText(2 + shift, 2 + delta, data.id);
 	}
 	auto sourceRect = computeSourceRect(singleImage);
 	if (sourceRect.isEmpty()) {
+		std::cout << "Bad emoji: " << data.id.toStdString() << std::endl;
 		return false;
 	}
 	if (kScaleFromLarge) {
@@ -307,10 +322,23 @@ QImage Generator::generateImage(int imageIndex) {
 
 	auto font = QGuiApplication::font();
 	auto base = writeImages_;
-	if (type == ImageType::Mac) {
-		const auto family = QStringLiteral("Apple Color Emoji");
+	if (type == ImageType::Android) {
+		const auto regularId = QFontDatabase::addApplicationFont(base);
+		if (regularId < 0) {
+			std::cout << "NotoColorEmoji.ttf not loaded from: " << base.toStdString() << std::endl;
+			return QImage();
+		}
+	}
+	if (type == ImageType::Mac || type == ImageType::Android) {
+		const auto family = (type == ImageType::Mac)
+			? QStringLiteral("Apple Color Emoji")
+			: QStringLiteral("Noto Color Emoji");
 		font.setFamily(family);
-		font.setPixelSize(kScaleFromLarge ? kLargeEmojiFontSize : kEmojiFontSize);
+		font.setPixelSize(!kScaleFromLarge
+			? kEmojiFontSize
+			: (type == ImageType::Mac)
+			? kLargeEmojiFontSizeMac
+			: kLargeEmojiFontSizeAndroid);
 		if (QFontInfo(font).family() != family) {
 			return QImage();
 		}
@@ -343,8 +371,8 @@ QImage Generator::generateImage(int imageIndex) {
 		for (auto i = 0; i != inFileCount; ++i) {
 			auto &emoji = data_.list[inFileShift + i];
 			const auto targetRect = QRect(column * kEmojiSize, row * kEmojiSize, kEmojiSize, kEmojiSize);
-			if (type == ImageType::Mac) {
-				if (!PaintSingleMac(p, targetRect, emoji, font, singleImage)) {
+			if (type == ImageType::Mac || type == ImageType::Android) {
+				if (!PaintSingleFromFont(p, targetRect, emoji, font, type, singleImage)) {
 					++skippedCount;
 				}
 			} else if (type == ImageType::Twemoji || type == ImageType::JoyPixels) {
@@ -363,11 +391,14 @@ QImage Generator::generateImage(int imageIndex) {
 }
 
 bool Generator::writeImages() {
+	auto badCount = 0;
 	auto imageIndex = 0;
-	while (true) {
+	while (imageIndex * kEmojiInRow * kEmojiRowsInFile < data_.list.size()) {
 		auto image = generateImage(imageIndex);
 		if (image.isNull()) {
-			break;
+			++badCount;
+			++imageIndex;
+			continue;
 		}
 		auto postfix = '_' + QString::number(imageIndex + 1);
 		auto filename = spritePath_ + postfix + ".webp";
@@ -405,7 +436,7 @@ bool Generator::writeImages() {
 		}
 		++imageIndex;
 	}
-	return (imageIndex * kEmojiInRow * kEmojiRowsInFile >= data_.list.size());
+	return (badCount == 0);
 }
 
 bool Generator::writeSource() {
