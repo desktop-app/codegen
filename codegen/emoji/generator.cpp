@@ -197,11 +197,14 @@ constexpr auto kLargeEmojiDelta = 167 - 9;
 enum class ImageType {
 	Mac,
 	Twemoji,
+	JoyPixels,
 };
 
 [[nodiscard]] ImageType GuessImageType(QString tag) {
 	if (tag.indexOf("twemoji") >= 0) {
 		return ImageType::Twemoji;
+	} else if (tag.indexOf("joypixels") >= 0) {
+		return ImageType::JoyPixels;
 	}
 	return ImageType::Mac;
 }
@@ -227,13 +230,23 @@ bool PaintSingleMac(QPainter &p, QRect targetRect, const Emoji &data, QFont &fon
 	return true;
 }
 
-bool PaintSingleTwemoji(QPainter &p, QRect targetRect, const Emoji &data, const QString &base) {
+bool PaintSingleFromFile(QPainter &p, QRect targetRect, const Emoji &data, const QString &base, ImageType type) {
 	auto nameParts = QStringList();
 	auto namePartsFull = QStringList();
+	const auto ucsToPart = [&](uint32 ucs4) {
+		if (type == ImageType::Twemoji) {
+			return QString::number(ucs4, 16).toLower();
+		} else if (type == ImageType::JoyPixels) {
+			return QString("%1").arg(ucs4, 4, 16, QChar('0')).toLower();
+		}
+		return QString();
+	};
 	for (auto i = 0; i != data.id.size(); ++i) {
 		uint ucs4 = data.id[i].unicode();
-		if (ucs4 == kPostfix) {
-			namePartsFull.push_back(QString::number(ucs4, 16).toLower());
+		if (type == ImageType::JoyPixels && ucs4 == 0x200d) {
+			continue;
+		} else if (ucs4 == kPostfix) {
+			namePartsFull.push_back(ucsToPart(ucs4));
 			continue;
 		} else if (QChar::isHighSurrogate(ucs4) && i + 1 != data.id.size()) {
 			ushort low = data.id[++i].unicode();
@@ -243,8 +256,8 @@ bool PaintSingleTwemoji(QPainter &p, QRect targetRect, const Emoji &data, const 
 				return false;
 			}
 		}
-		nameParts.push_back(QString::number(ucs4, 16).toLower());
-		namePartsFull.push_back(QString::number(ucs4, 16).toLower());
+		nameParts.push_back(ucsToPart(ucs4));
+		namePartsFull.push_back(ucsToPart(ucs4));
 	}
 	const auto fillEmpty = [&] {
 		const auto column = targetRect.x() / targetRect.width();
@@ -262,15 +275,20 @@ bool PaintSingleTwemoji(QPainter &p, QRect targetRect, const Emoji &data, const 
 		}
 		return QImage(base + '/' + nameAdded + ".png");
 	}();
+	const auto allowDownscale = (type == ImageType::JoyPixels);
 	if (image.isNull()) {
 		std::cout << "NOT FOUND: " << name.toStdString() << std::endl;
 		fillEmpty();
 		return false;
-	} else if (image.width() != targetRect.width()
-		|| image.height() != targetRect.height()) {
+	} else if (image.width() != image.height()
+		|| image.width() < targetRect.width()
+		|| image.height() < targetRect.height()
+		|| (!allowDownscale && image.width() != targetRect.width())) {
 		std::cout << "BAD SIZE: " << name.toStdString() << std::endl;
 		fillEmpty();
 		return false;
+	} else if (allowDownscale && image.width() > targetRect.width()) {
+		p.drawImage(targetRect, image.scaled(targetRect.size(), Qt::IgnoreAspectRatio, Qt::SmoothTransformation));
 	} else {
 		p.drawImage(targetRect, image);
 	}
@@ -296,7 +314,7 @@ QImage Generator::generateImage(int imageIndex) {
 		if (QFontInfo(font).family() != family) {
 			return QImage();
 		}
-	} else if (type == ImageType::Twemoji) {
+	} else if (type == ImageType::Twemoji || type == ImageType::JoyPixels) {
 		if (!QDir(base).exists()) {
 			return QImage();
 		}
@@ -329,8 +347,8 @@ QImage Generator::generateImage(int imageIndex) {
 				if (!PaintSingleMac(p, targetRect, emoji, font, singleImage)) {
 					++skippedCount;
 				}
-			} else if (type == ImageType::Twemoji) {
-				if (!PaintSingleTwemoji(p, targetRect, emoji, base)) {
+			} else if (type == ImageType::Twemoji || type == ImageType::JoyPixels) {
+				if (!PaintSingleFromFile(p, targetRect, emoji, base, type)) {
 					++skippedCount;
 				}
 			}
