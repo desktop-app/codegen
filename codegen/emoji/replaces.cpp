@@ -330,7 +330,7 @@ bool CheckAndConvertReplaces(Replaces &replaces, const Data &data) {
 	};
 
 	auto success = true;
-	
+
 	// Find all replaces in data.map, adjust id if necessary.
 	// Store all replaces in sorted map to find them fast afterwards.
 	auto maleModifier = ComposeString({ 0x200D, 0x2642, 0xFE0F });

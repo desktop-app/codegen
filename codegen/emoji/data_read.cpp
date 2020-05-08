@@ -55,7 +55,9 @@ using File = std::vector<Section>;
 }
 
 [[nodiscard]] std::pair<Part, QStringRef> ReadPart(QStringRef data) {
-	const auto endIndex = data.indexOf("\n\n");
+	const auto endIndex1 = data.indexOf("\n\n");
+	const auto endIndex2 = data.indexOf("\r\n\r\n");
+	const auto endIndex = (endIndex1 >= 0) ? endIndex1 : endIndex2;
 	auto parse = data.mid(0, endIndex);
 	auto result = Part();
 	while (true) {
