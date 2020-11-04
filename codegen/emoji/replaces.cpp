@@ -308,7 +308,7 @@ Replaces PrepareReplaces(const QString &filename) {
 
 bool CheckAndConvertReplaces(Replaces &replaces, const Data &data) {
 	auto result = Replaces(replaces.filename);
-	auto sorted = QMap<Id, Replace>();
+	auto sorted = QMultiMap<Id, Replace>();
 	auto findId = [&](const Id &id) {
 		return data.map.find(id) != data.map.cend();
 	};
@@ -324,7 +324,7 @@ bool CheckAndConvertReplaces(Replaces &replaces, const Data &data) {
 		if (data.list[it->second].postfixed) {
 			id += QChar(kPostfix);
 		}
-		auto inserted = sorted.insertMulti(id, replace);
+		auto inserted = sorted.insert(id, replace);
 		inserted.value().id = id;
 		return true;
 	};

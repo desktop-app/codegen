@@ -774,7 +774,7 @@ void palette::finalize() {\n\
 		auto fallbackIndex = (fallbackIterator == paletteIndices_.end()) ? -1 : fallbackIterator->second;
 		auto assignment = QString("{ %1, %2, %3, %4 }").arg(color.red).arg(color.green).arg(color.blue).arg(color.alpha);
 		source_->stream() << "\tcompute(" << index << ", " << fallbackIndex << ", " << assignment << ");\n";
-		checksumString.append('&' + name + ':' + assignment);
+		checksumString.append(('&' + name + ':' + assignment).toUtf8());
 
 		auto isCopy = !variable.value.copyOf().isEmpty();
 		auto colorString = paletteColorValue(color);
