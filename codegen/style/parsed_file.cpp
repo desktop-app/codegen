@@ -36,7 +36,7 @@ constexpr int kErrorCyclicDependency   = 809;
 QString findInputFile(const Options &options, int index) {
 	for (const auto &dir : options.includePaths) {
 		QString tryPath = QDir(dir).absolutePath() + '/' + options.inputPaths[index];
-		if (QFileInfo(tryPath).exists()) {
+		if (QFileInfo::exists(tryPath)) {
 			return tryPath;
 		}
 	}
