@@ -410,7 +410,7 @@ bool Generator::writeImages() {
 				return false;
 			}
 		}
-		auto needResave = !QFileInfo(filename).exists();
+		auto needResave = !QFileInfo::exists(filename);
 		if (!needResave) {
 			QFile file(filename);
 			if (!file.open(QIODevice::ReadOnly)) {
