@@ -298,16 +298,16 @@ QString Generator::valueAssignmentCode(structure::Value value) const {
 	} break;
 	case Tag::Point: {
 		auto v(value.Point());
-		return QString("{ %1, %2 }").arg(pxValueName(v.x)).arg(pxValueName(v.y));
+		return QString("{ %1, %2 }").arg(pxValueName(v.x), pxValueName(v.y));
 	} break;
 	case Tag::Size: {
 		auto v(value.Size());
-		return QString("{ %1, %2 }").arg(pxValueName(v.width)).arg(pxValueName(v.height));
+		return QString("{ %1, %2 }").arg(pxValueName(v.width), pxValueName(v.height));
 	} break;
 	case Tag::Align: return QString("style::al_%1").arg(value.String().c_str());
 	case Tag::Margins: {
 		auto v(value.Margins());
-		return QString("{ %1, %2, %3, %4 }").arg(pxValueName(v.left)).arg(pxValueName(v.top)).arg(pxValueName(v.right)).arg(pxValueName(v.bottom));
+		return QString("{ %1, %2, %3, %4 }").arg(pxValueName(v.left), pxValueName(v.top), pxValueName(v.right), pxValueName(v.bottom));
 	} break;
 	case Tag::Font: {
 		auto v(value.Font());
@@ -333,7 +333,10 @@ QString Generator::valueAssignmentCode(structure::Value value) const {
 			}
 			auto color = valueAssignmentCode(part.color);
 			auto offset = valueAssignmentCode(part.offset);
-			parts.push_back(QString("MonoIcon{ &iconMask%1, %2, %3 }").arg(maskIndex).arg(color).arg(offset));
+			parts.push_back(QString("MonoIcon{ &iconMask%1, %2, %3 }").arg(
+				QString::number(maskIndex),
+				color,
+				offset));
 		}
 		return QString("{ %1 }").arg(parts.join(", "));
 	} break;
