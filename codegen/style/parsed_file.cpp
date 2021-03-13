@@ -503,7 +503,7 @@ structure::Value ParsedFile::readPositiveValue() {
 		auto value = tokenValue(numericToken);
 		auto match = QRegularExpression("^\\d+px$").match(value);
 		if (match.hasMatch()) {
-			return { structure::TypeTag::Pixels, value.mid(0, value.size() - 2).toInt() };
+			return { structure::TypeTag::Pixels, value.midRef(0, value.size() - 2).toInt() };
 		}
 	}
 	file_.putBack();
@@ -822,7 +822,7 @@ QString ParsedFile::readMonoIconFilename() {
 			auto pathAndModifiers = fullpath.split('-');
 			auto filepath = pathAndModifiers[0];
 			auto modifiers = pathAndModifiers.mid(1);
-			for (auto modifierName : modifiers) {
+			for (const auto &modifierName : modifiers) {
 				if (!GetModifier(modifierName)) {
 					logError(kErrorBadIconModifier) << "unknown modifier: " << modifierName.toStdString();
 					return QString();

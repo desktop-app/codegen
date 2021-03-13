@@ -261,7 +261,7 @@ QString Generator::typeToDefaultValue(structure::Type type) const {
 	case Tag::Struct: {
 		if (auto realType = module_.findStruct(type.name)) {
 			QStringList fields;
-			for (auto field : realType->fields) {
+			for (const auto &field : realType->fields) {
 				fields.push_back(typeToDefaultValue(field.type));
 			}
 			return "{ " + fields.join(", ") + " }";
@@ -341,7 +341,7 @@ QString Generator::valueAssignmentCode(structure::Value value) const {
 		if (!value.Fields()) return QString();
 
 		QStringList fields;
-		for (auto field : *value.Fields()) {
+		for (const auto &field : *value.Fields()) {
 			fields.push_back(valueAssignmentCode(field.variable.value));
 		}
 		return "{ " + fields.join(", ") + " }";
@@ -387,7 +387,7 @@ bool Generator::writeHeaderRequiredIncludes() {
 	} else if (includes.isEmpty()) {
 		return true;
 	}
-	for (const auto base : includes) {
+	for (const auto &base : includes) {
 		header_->include("styles/" + base + ".h");
 	}
 	header_->newline();
@@ -1146,7 +1146,7 @@ bool Generator::writeFontFamiliesInit() {
 		return true;
 	}
 
-	for (auto familyIndex : fontFamilies_) {
+	for (auto familyIndex : std::as_const(fontFamilies_)) {
 		source_->stream() << "int font" << familyIndex << "index;\n";
 	}
 	source_->stream() << "void initFontFamilies() {\n";
@@ -1214,7 +1214,7 @@ QByteArray iconMaskValuePng(QString filepath) {
 			<< png3x.width() << "x" << png3x.height();
 		return result;
 	}
-	for (const auto modifierName : modifiers) {
+	for (const auto &modifierName : modifiers) {
 		if (const auto modifier = GetModifier(modifierName)) {
 			modifier(png1x);
 			modifier(png2x);
@@ -1326,7 +1326,7 @@ bool Generator::collectUniqueValues() {
 				return false;
 			}
 
-			for (auto field : *fields) {
+			for (const auto &field : *fields) {
 				if (!collector(field.variable)) {
 					return false;
 				}
