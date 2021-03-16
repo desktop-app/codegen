@@ -519,7 +519,6 @@ void Generator::writeSetSearch(const std::set<QString, std::greater<>> &set, Com
 		auto weContinueOldSwitch = finishChecksTillKey(name);
 		while (chars.size() != name.size()) {
 			auto checking = chars.size();
-			auto partialKey = name.mid(0, checking);
 
 			auto keyChar = name[checking];
 			auto usedIfForCheckCount = 0;

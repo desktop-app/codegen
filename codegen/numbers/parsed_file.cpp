@@ -55,7 +55,6 @@ bool ParsedFile::read() {
 		return false;
 	}
 
-	auto filepath = QFileInfo(options_.inputPath).absoluteFilePath();
 	do {
 		if (auto code = file_.getToken(BasicType::Int)) {
 			if (!file_.getToken(BasicType::Semicolon)) {

@@ -543,7 +543,6 @@ bool CheckOldInCurrent(
 
 		const auto genderIndex = (1 - otherGenderIndex);
 		const auto real = addGenderByIndex(*i, genderIndex);
-		const auto bare = BareIdFromInput(real);
 		if (!find(data.colored, real)) {
 			common::logError(kErrorBadData, "input")
 				<< "Bad data: old colored emoji (index "
