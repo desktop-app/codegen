@@ -31,7 +31,7 @@ void writeLicense(QTextStream &stream, const ProjectInfo &project) {
 CppFile::CppFile(const QString &path, const ProjectInfo &project)
 : stream_(&content_)
 , forceReGenerate_(project.forceReGenerate) {
-	bool cpp = path.toLower().endsWith(".cpp");
+	bool cpp = path.endsWith(".cpp", Qt::CaseInsensitive);
 
 	QFileInfo info(path);
 	info.dir().mkpath(".");
