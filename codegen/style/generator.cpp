@@ -900,7 +900,6 @@ int getPaletteIndex(QLatin1String name) {\n\
 		auto weContinueOldSwitch = finishChecksTillKey(name);
 		while (chars.size() != name.size()) {
 			auto checking = chars.size();
-			auto partialKey = name.mid(0, checking);
 
 			auto keyChar = name[checking];
 			auto usedIfForCheckCount = 0;
@@ -1252,7 +1251,6 @@ bool Generator::writeIconValues() {
 	for (auto i = iconMasks_.cbegin(), e = iconMasks_.cend(); i != e; ++i) {
 		QString filePath = i.key();
 		QByteArray maskData;
-		QImage png100x, png200x;
 		if (filePath.startsWith("size://")) {
 			QStringList dimensions = filePath.mid(7).split(',');
 			if (dimensions.size() < 2 || dimensions.at(0).toInt() <= 0 || dimensions.at(1).toInt() <= 0) {
