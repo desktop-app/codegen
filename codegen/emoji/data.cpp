@@ -346,7 +346,7 @@ void appendCategory(
 					}
 				}
 			}
-			
+
 		}
 		result.categories.back().push_back(it->second);
 	}
@@ -366,26 +366,6 @@ void fillReplaces(Data &result) {
 		}
 		result.replaces.insert(make_pair(QString::fromUtf8(replace.replace), it->second));
 	}
-}
-
-bool AddItemBeforeItem(InputData &data, const InputId &add, const InputId &before) {
-	auto addToCategory = (InputCategory*)nullptr;
-	auto addBeforeIterator = InputCategory::iterator();
-	for (auto &category : data.categories) {
-		for (auto i = category.begin(), e = category.end(); i != e; ++i) {
-			if (*i == add) {
-				return true;
-			} else if (*i == before) {
-				addToCategory = &category;
-				addBeforeIterator = i;
-			}
-		}
-	}
-	if (!addToCategory) {
-		return false;
-	}
-	addToCategory->insert(addBeforeIterator, add);
-	return true;
 }
 
 bool CheckOldInCurrent(

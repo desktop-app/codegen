@@ -65,10 +65,6 @@ bool isValidColor(const QString &str) {
 	return true;
 }
 
-uchar toGray(uchar r, uchar g, uchar b) {
-	return qMax(qMin(int(0.21 * r + 0.72 * g + 0.07 * b), 255), 0);
-}
-
 uchar readHexUchar(QChar ch) {
 	auto code = ch.unicode();
 	return (code >= '0' && code <= '9') ? ((code - '0') & 0xFF) : ((code + 10 - 'a') & 0xFF);
@@ -89,10 +85,6 @@ structure::data::color convertWebColor(const QString &str, const QString &fallba
 		}
 	}
 	return { r, g, b, a, fallback };
-}
-
-structure::data::color convertIntColor(int r, int g, int b, int a) {
-	return { uchar(r & 0xFF), uchar(g & 0xFF), uchar(b & 0xFF), uchar(a & 0xFF) };
 }
 
 std::string logType(const structure::Type &type) {
