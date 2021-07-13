@@ -15,8 +15,6 @@ namespace codegen {
 namespace emoji {
 namespace {
 
-constexpr auto ColorMask = 0xD83CDFFBU;
-
 using Line = std::vector<QString>;
 using Part = std::vector<Line>;
 using Section = std::vector<Part>;

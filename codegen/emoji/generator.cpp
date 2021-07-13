@@ -33,8 +33,6 @@ constexpr auto kErrorCantWritePath = 851;
 
 constexpr auto kOriginalBits = 12;
 constexpr auto kIdSizeBits = 6;
-constexpr auto kColumnBits = 5;
-constexpr auto kRowBits = 7;
 
 common::ProjectInfo Project = {
 	"codegen_emoji",
@@ -315,8 +313,6 @@ QImage Generator::generateImage(int imageIndex) {
 
 	auto emojiCount = int(data_.list.size());
 	auto columnsCount = kEmojiInRow;
-	auto fullRowsCount = (emojiCount / columnsCount) + ((emojiCount % columnsCount) ? 1 : 0);
-	auto imagesCount = (fullRowsCount / kEmojiRowsInFile) + ((fullRowsCount % kEmojiRowsInFile) ? 1 : 0);
 
 	auto sourceSize = kScaleFromLarge ? kLargeEmojiSize : kEmojiSize;
 

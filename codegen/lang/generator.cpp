@@ -135,7 +135,6 @@ struct phrase;\n\
 	std::set<QString> producersDeclared;
 	for (auto &entry : langpack_.entries) {
 		const auto isPlural = !entry.keyBase.isEmpty();
-		const auto &key = entry.key;
 		auto tags = QStringList();
 		auto producerArgs = QStringList();
 		auto currentArgs = QStringList();
