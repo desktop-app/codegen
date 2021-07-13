@@ -536,7 +536,7 @@ structure::Value ParsedFile::readColorValue() {
 						if (options_.isPalette) {
 							if (auto fallbackName = file_.getToken(BasicType::Name)) {
 								structure::FullName name = { tokenValue(fallbackName) };
-								if (auto variable = module_->findVariableInModule(name, *module_)) {
+								if (module_->findVariableInModule(name, *module_)) {
 									return { convertWebColor(chars, tokenValue(fallbackName)) };
 								} else {
 									logError(kErrorIdentifierNotFound) << "fallback color name";
