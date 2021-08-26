@@ -458,7 +458,7 @@ public:\n\
 	int indexOfColor(color c) const;\n\
 	color colorAtIndex(int index) const;\n\
 \n\
-	inline const color &get_transparent() const { return _colors[0]; }; // special color\n";
+	inline const color &transparent() const { return _colors[0]; }; // special color\n";
 
 	int indexInPalette = 1;
 	if (!module_.enumVariables([&](const Variable &variable) -> bool {
@@ -468,7 +468,7 @@ public:\n\
 		}
 
 		auto index = (indexInPalette++);
-		header_->stream() << "\tinline const color &get_" << name << "() const { return _colors[" << index << "]; };\n";
+		header_->stream() << "\tinline const color &" << name << "() const { return _colors[" << index << "]; };\n";
 		return true;
 	})) return false;
 
@@ -566,6 +566,7 @@ private:\n\
 \n\
 namespace main_palette {\n\
 \n\
+not_null<const palette*> get();\n\
 QByteArray save();\n\
 bool load(const QByteArray &cache);\n\
 palette::SetResult setColor(QLatin1String name, uchar r, uchar g, uchar b, uchar a);\n\
@@ -712,7 +713,7 @@ bool Generator::writeRefsDefinition() {
 	}
 
 	if (isPalette_) {
-		source_->stream() << "const style::color &transparent(_palette.get_transparent()); // special color\n";
+		source_->stream() << "const style::color &transparent(_palette.transparent()); // special color\n";
 	}
 	bool result = module_.enumVariables([&](const Variable &variable) -> bool {
 		auto name = variable.name.back();
@@ -722,7 +723,7 @@ bool Generator::writeRefsDefinition() {
 		}
 		source_->stream() << "const " << type << " &" << name << "(";
 		if (isPalette_) {
-			source_->stream() << "_palette.get_" << name << "()";
+			source_->stream() << "_palette." << name << "()";
 		} else {
 			source_->stream() << "_" << name;
 		}
@@ -733,7 +734,6 @@ bool Generator::writeRefsDefinition() {
 }
 
 bool Generator::writeSetPaletteColor() {
-	source_->newline();
 	source_->stream() << "\n\
 int palette::indexOfColor(style::color c) const {\n\
 	auto start = data(0);\n\
@@ -1002,6 +1002,10 @@ palette::SetResult palette::setColor(QLatin1String name, QLatin1String from) {\n
 }\n\
 \n\
 namespace main_palette {\n\
+\n\
+not_null<const palette*> get() {\n\
+	return &_palette;\n\
+}\n\
 \n\
 QByteArray save() {\n\
 	return _palette.save();\n\
