@@ -475,26 +475,7 @@ public:\n\
 	auto count = indexInPalette;
 	header_->stream() << "\
 \n\
-	palette &operator=(const palette &other) {\n\
-		auto wasReady = _ready;\n\
-		for (int i = 0; i != kCount; ++i) {\n\
-			if (other._status[i] == Status::Loaded) {\n\
-				if (_status[i] == Status::Initial) {\n\
-					new (data(i)) internal::ColorData(*other.data(i));\n\
-				} else {\n\
-					*data(i) = *other.data(i);\n\
-				}\n\
-			} else if (_status[i] != Status::Initial) {\n\
-				data(i)->~ColorData();\n\
-				_status[i] = Status::Initial;\n\
-				_ready = false;\n\
-			}\n\
-		}\n\
-		if (wasReady && !_ready) {\n\
-			finalize();\n\
-		}\n\
-		return *this;\n\
-	}\n\
+	palette &operator=(const palette &other);\n\
 \n\
 	static int32 Checksum();\n\
 \n\
@@ -812,6 +793,27 @@ void palette::finalize() {\n\
 		source_->stream() << "\tinternal::EnsureContrast(*data(" << overIndex->second << "), *data(" << underIndex->second << "));\n";
 	}
 	source_->stream() << "\
+}\n\
+palette &palette::operator=(const palette &other) {\n\
+	auto wasReady = _ready;\n\
+	for (int i = 0; i != kCount; ++i) {\n\
+		if (other._status[i] == Status::Loaded) {\n\
+			if (_status[i] == Status::Initial) {\n\
+				new (data(i)) internal::ColorData(*other.data(i));\n\
+			} else {\n\
+				*data(i) = *other.data(i);\n\
+			}\n\
+			_status[i] = Status::Loaded;\n\
+		} else if (_status[i] != Status::Initial) {\n\
+			data(i)->~ColorData();\n\
+			_status[i] = Status::Initial;\n\
+			_ready = false;\n\
+		}\n\
+	}\n\
+	if (wasReady && !_ready) {\n\
+		finalize();\n\
+	}\n\
+	return *this;\n\
 }\n\
 \n\
 int32 palette::Checksum() {\n\
