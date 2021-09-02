@@ -431,36 +431,15 @@ bool Generator::writeHeaderStyleNamespace() {
 
 bool Generator::writePaletteDefinition() {
 	header_->stream() << "\
-class palette {\n\
+class palette;\n\
+class palette_data {\n\
 public:\n\
-	palette() = default;\n\
-	palette(const palette &other) = delete;\n\
-\n\
-	QByteArray save() const;\n\
-	bool load(const QByteArray &cache);\n\
-\n\
-	enum class SetResult {\n\
-		Ok,\n\
-		KeyNotFound,\n\
-		ValueNotFound,\n\
-		Duplicate,\n\
-	};\n\
-	SetResult setColor(QLatin1String name, uchar r, uchar g, uchar b, uchar a);\n\
-	SetResult setColor(QLatin1String name, QLatin1String from);\n\
-	void reset() {\n\
-		clear();\n\
-		finalize();\n\
-	}\n\
-\n\
-	// Created not inited, should be finalized before usage.\n\
-	void finalize();\n\
-\n\
-	int indexOfColor(color c) const;\n\
-	color colorAtIndex(int index) const;\n\
+	static constexpr auto kCount = " << (1 + module_.variablesCount()) << ";\n\
+	static int32 Checksum();\n\
 \n\
 	inline const color &transparent() const { return _colors[0]; }; // special color\n";
 
-	int indexInPalette = 1;
+	auto indexInPalette = 1;
 	if (!module_.enumVariables([&](const Variable &variable) -> bool {
 		auto name = variable.name.back();
 		if (variable.value.type().tag != structure::TypeTag::Color) {
@@ -471,43 +450,12 @@ public:\n\
 		header_->stream() << "\tinline const color &" << name << "() const { return _colors[" << index << "]; };\n";
 		return true;
 	})) return false;
+	const auto count = indexInPalette;
 
-	auto count = indexInPalette;
 	header_->stream() << "\
 \n\
-	palette &operator=(const palette &other);\n\
-\n\
-	static int32 Checksum();\n\
-\n\
-	~palette() {\n\
-		clear();\n\
-	}\n\
-\n\
-private:\n\
-	static constexpr auto kCount = " << count << ";\n\
-\n\
-	void clear() {\n\
-		for (int i = 0; i != kCount; ++i) {\n\
-			if (_status[i] != Status::Initial) {\n\
-				data(i)->~ColorData();\n\
-				_status[i] = Status::Initial;\n\
-				_ready = false;\n\
-			}\n\
-		}\n\
-	}\n\
-\n\
-	struct TempColorData { uchar r, g, b, a; };\n\
-	void compute(int index, int fallbackIndex, TempColorData value) {\n\
-		if (_status[index] == Status::Initial) {\n\
-			if (fallbackIndex >= 0 && _status[fallbackIndex] == Status::Loaded) {\n\
-				_status[index] = Status::Loaded;\n\
-				new (data(index)) internal::ColorData(*data(fallbackIndex));\n\
-			} else {\n\
-				_status[index] = Status::Created;\n\
-				new (data(index)) internal::ColorData(value.r, value.g, value.b, value.a);\n\
-			}\n\
-		}\n\
-	}\n\
+protected:\n\
+	void finalize(palette &that);\n\
 \n\
 	internal::ColorData *data(int index) {\n\
 		return reinterpret_cast<internal::ColorData*>(_data) + index;\n\
@@ -515,15 +463,6 @@ private:\n\
 \n\
 	const internal::ColorData *data(int index) const {\n\
 		return reinterpret_cast<const internal::ColorData*>(_data) + index;\n\
-	}\n\
-\n\
-	void setData(int index, const internal::ColorData &value) {\n\
-		if (_status[index] == Status::Initial) {\n\
-			new (data(index)) internal::ColorData(value);\n\
-		} else {\n\
-			*data(index) = value;\n\
-		}\n\
-		_status[index] = Status::Loaded;\n\
 	}\n\
 \n\
 	enum class Status {\n\
@@ -548,23 +487,22 @@ private:\n\
 namespace main_palette {\n\
 \n\
 not_null<const palette*> get();\n\
-QByteArray save();\n\
-bool load(const QByteArray &cache);\n\
-palette::SetResult setColor(QLatin1String name, uchar r, uchar g, uchar b, uchar a);\n\
-palette::SetResult setColor(QLatin1String name, QLatin1String from);\n\
-void apply(const palette &other);\n\
-void reset();\n\
-int indexOfColor(color c);\n\
 \n\
 struct row {\n\
-\tQLatin1String name;\n\
-\tQLatin1String value;\n\
-\tQLatin1String fallback;\n\
-\tQLatin1String description;\n\
+	QLatin1String name;\n\
+	QLatin1String value;\n\
+	QLatin1String fallback;\n\
+	QLatin1String description;\n\
 };\n\
 QList<row> data();\n\
 \n\
-} // namespace main_palette\n";
+} // namespace main_palette\n\
+\n\
+namespace internal {\n\
+\n\
+int GetPaletteIndex(QLatin1String name);\n\
+\n\
+} // namespace internal\n";
 
 	return true;
 }
@@ -649,6 +587,10 @@ bool Generator::writeRefsDeclarations() {
 }
 
 bool Generator::writeIncludesInSource() {
+	if (isPalette_) {
+		source_->include("ui/style/style_core_palette.h");
+		source_->newline();
+	}
 	if (!module_.hasIncludes()) {
 		return true;
 	}
@@ -716,25 +658,8 @@ bool Generator::writeRefsDefinition() {
 
 bool Generator::writeSetPaletteColor() {
 	source_->stream() << "\n\
-int palette::indexOfColor(style::color c) const {\n\
-	auto start = data(0);\n\
-	if (c._data >= start && c._data < start + kCount) {\n\
-		return static_cast<int>(c._data - start);\n\
-	}\n\
-	return -1;\n\
-}\n\
-\n\
-color palette::colorAtIndex(int index) const {\n\
-	Assert(_ready);\n\
-	Assert(index >= 0 && index < kCount);\n\
-	return _colors[index];\n\
-}\n\
-\n\
-void palette::finalize() {\n\
-	if (_ready) return;\n\
-	_ready = true;\n\
-\n\
-	compute(0, -1, { 255, 255, 255, 0}); // special color\n";
+void palette_data::finalize(palette &that) {\n\
+	that.compute(0, -1, { 255, 255, 255, 0}); // special color\n";
 
 	QList<structure::FullName> names;
 	module_.enumVariables([&](const Variable &variable) -> bool {
@@ -757,7 +682,7 @@ void palette::finalize() {\n\
 		auto fallbackIterator = paletteIndices_.find(colorFallbackName(variable.value));
 		auto fallbackIndex = (fallbackIterator == paletteIndices_.end()) ? -1 : fallbackIterator->second;
 		auto assignment = QString("{ %1, %2, %3, %4 }").arg(color.red).arg(color.green).arg(color.blue).arg(color.alpha);
-		source_->stream() << "\tcompute(" << index << ", " << fallbackIndex << ", " << assignment << ");\n";
+		source_->stream() << "\tthat.compute(" << index << ", " << fallbackIndex << ", " << assignment << ");\n";
 		checksumString.append(('&' + name + ':' + assignment).toUtf8());
 
 		auto isCopy = !variable.value.copyOf().isEmpty();
@@ -774,7 +699,7 @@ void palette::finalize() {\n\
 			return false;
 		}
 
-		dataRows.append("\tresult.push_back({ qstr(\"" + name + "\"), qstr(\"" + value + "\"), qstr(\"" + (isCopy ? QString() : fallbackName) + "\"), qstr(" + stringToEncodedString(variable.description.toStdString()) + ") });\n");
+		dataRows.append("\tresult.push_back({ qstr(\"" + name + "\"), qstr(\"" + value + "\"), qstr(\"" + (isCopy ? QString() : fallbackName) + "\"), qstr(" + stringToEncodedString(variable.description) + ") });\n");
 		return true;
 	});
 	if (!result) {
@@ -794,35 +719,14 @@ void palette::finalize() {\n\
 	}
 	source_->stream() << "\
 }\n\
-palette &palette::operator=(const palette &other) {\n\
-	auto wasReady = _ready;\n\
-	for (int i = 0; i != kCount; ++i) {\n\
-		if (other._status[i] == Status::Loaded) {\n\
-			if (_status[i] == Status::Initial) {\n\
-				new (data(i)) internal::ColorData(*other.data(i));\n\
-			} else {\n\
-				*data(i) = *other.data(i);\n\
-			}\n\
-			_status[i] = Status::Loaded;\n\
-		} else if (_status[i] != Status::Initial) {\n\
-			data(i)->~ColorData();\n\
-			_status[i] = Status::Initial;\n\
-			_ready = false;\n\
-		}\n\
-	}\n\
-	if (wasReady && !_ready) {\n\
-		finalize();\n\
-	}\n\
-	return *this;\n\
-}\n\
 \n\
-int32 palette::Checksum() {\n\
+int32 palette_data::Checksum() {\n\
 	return " << checksum << ";\n\
 }\n";
 
-	source_->newline().pushNamespace().newline();
+	source_->newline().pushNamespace("internal").newline();
 	source_->stream() << "\
-int getPaletteIndex(QLatin1String name) {\n\
+int GetPaletteIndex(QLatin1String name) {\n\
 	auto size = name.size();\n\
 	auto data = name.data();\n";
 
@@ -959,88 +863,10 @@ int getPaletteIndex(QLatin1String name) {\n\
 
 	source_->newline().popNamespace().newline();
 	source_->stream() << "\
-QByteArray palette::save() const {\n\
-	if (!_ready) const_cast<palette*>(this)->finalize();\n\
-\n\
-	auto result = QByteArray(" << (count * 4) << ", Qt::Uninitialized);\n\
-	for (auto i = 0, index = 0; i != " << count << "; ++i) {\n\
-		result[index++] = static_cast<uchar>(data(i)->c.red());\n\
-		result[index++] = static_cast<uchar>(data(i)->c.green());\n\
-		result[index++] = static_cast<uchar>(data(i)->c.blue());\n\
-		result[index++] = static_cast<uchar>(data(i)->c.alpha());\n\
-	}\n\
-	return result;\n\
-}\n\
-\n\
-bool palette::load(const QByteArray &cache) {\n\
-	if (cache.size() != " << (count * 4) << ") return false;\n\
-\n\
-	auto p = reinterpret_cast<const uchar*>(cache.constData());\n\
-	for (auto i = 0; i != " << count << "; ++i) {\n\
-		setData(i, { p[i * 4 + 0], p[i * 4 + 1], p[i * 4 + 2], p[i * 4 + 3] });\n\
-	}\n\
-	return true;\n\
-}\n\
-\n\
-palette::SetResult palette::setColor(QLatin1String name, uchar r, uchar g, uchar b, uchar a) {\n\
-	auto nameIndex = getPaletteIndex(name);\n\
-	if (nameIndex < 0) return SetResult::KeyNotFound;\n\
-	auto duplicate = (_status[nameIndex] != Status::Initial);\n\
-\n\
-	setData(nameIndex, { r, g, b, a });\n\
-	return duplicate ? SetResult::Duplicate : SetResult::Ok;\n\
-}\n\
-\n\
-palette::SetResult palette::setColor(QLatin1String name, QLatin1String from) {\n\
-	auto nameIndex = getPaletteIndex(name);\n\
-	if (nameIndex < 0) return SetResult::KeyNotFound;\n\
-	auto duplicate = (_status[nameIndex] != Status::Initial);\n\
-\n\
-	auto fromIndex = getPaletteIndex(from);\n\
-	if (fromIndex < 0 || _status[fromIndex] != Status::Loaded) return SetResult::ValueNotFound;\n\
-\n\
-	setData(nameIndex, *data(fromIndex));\n\
-	return duplicate ? SetResult::Duplicate : SetResult::Ok;\n\
-}\n\
-\n\
 namespace main_palette {\n\
 \n\
 not_null<const palette*> get() {\n\
 	return &_palette;\n\
-}\n\
-\n\
-QByteArray save() {\n\
-	return _palette.save();\n\
-}\n\
-\n\
-bool load(const QByteArray &cache) {\n\
-	if (_palette.load(cache)) {\n\
-		style::internal::resetIcons();\n\
-		return true;\n\
-	}\n\
-	return false;\n\
-}\n\
-\n\
-palette::SetResult setColor(QLatin1String name, uchar r, uchar g, uchar b, uchar a) {\n\
-	return _palette.setColor(name, r, g, b, a);\n\
-}\n\
-\n\
-palette::SetResult setColor(QLatin1String name, QLatin1String from) {\n\
-	return _palette.setColor(name, from);\n\
-}\n\
-\n\
-void apply(const palette &other) {\n\
-	_palette = other;\n\
-	style::internal::resetIcons();\n\
-}\n\
-\n\
-void reset() {\n\
-	_palette.reset();\n\
-	style::internal::resetIcons();\n\
-}\n\
-\n\
-int indexOfColor(color c) {\n\
-	return _palette.indexOfColor(c);\n\
 }\n\
 \n\
 QList<row> data() {\n\

@@ -65,6 +65,9 @@ public:
 	bool hasVariables() const {
 		return !variables_.isEmpty();
 	}
+	int variablesCount() const {
+		return variables_.size();
+	}
 
 	template <typename F>
 	bool enumVariables(F functor) const {
