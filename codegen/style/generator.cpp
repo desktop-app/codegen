@@ -323,9 +323,7 @@ QString Generator::valueAssignmentCode(structure::Value value) const {
 	} break;
 	case Tag::Icon: {
 		auto v(value.Icon());
-		if (v.parts.empty()) return QString("{}");
-
-		QStringList parts;
+		QStringList parts = { "std::in_place" };
 		for (const auto &part : v.parts) {
 			auto maskIndex = iconMasks_.value(part.filename, -1);
 			if (maskIndex < 0) {
