@@ -72,7 +72,11 @@ using File = std::vector<Section>;
 }
 
 [[nodiscard]] std::pair<Section, QStringRef> ReadSection(QStringRef data) {
-	const auto endIndex = data.indexOf("--------");
+	const auto endIndex1 = data.indexOf("--------");
+	const auto endIndex2 = data.indexOf("========");
+	const auto endIndex = (endIndex1 >= 0 && endIndex2 >= 0)
+		? std::min(endIndex1, endIndex2)
+		: std::max(endIndex1, endIndex2);
 	auto parse = data.mid(0, endIndex);
 	auto result = Section();
 	while (true) {
@@ -136,7 +140,12 @@ using File = std::vector<Section>;
 	return withColoredLine[1];
 }
 
-[[nodiscard]] std::pair<QString, QString> FindDoubleColored(const File &file, const QString &colored) {
+struct DoubleColoredSample {
+	QString original;
+	QString same;
+	QString different;
+};
+[[nodiscard]] DoubleColoredSample FindDoubleColored(const File &file, const QString &colored) {
 	const auto &withColoredLine = FindColoredLine(file, colored);
 	if (withColoredLine.empty()) {
 		return {};
@@ -144,7 +153,7 @@ using File = std::vector<Section>;
 		logDataError() << "Wrong double colored emoji: " << colored.toStdString();
 		return {};
 	}
-	return { withColoredLine[1], withColoredLine[2] };
+	return { withColoredLine[0], withColoredLine[1], withColoredLine[2] };
 }
 
 } // namespace
@@ -184,7 +193,7 @@ InputData ReadData(const QString &path) {
 	const auto file = ReadFile(path);
 	if (file.size() < 3
 		|| file[0].size() != 8
-		|| file[1].size() != 8) {
+		|| file[1].size() > 8) {
 		logDataError() << "Wrong file parts.";
 		return InputData();
 	}
@@ -207,25 +216,40 @@ InputData ReadData(const QString &path) {
 		const auto &doubleColored = file[2][1];
 		for (const auto &doubleColoredLine : doubleColored) {
 			for (const auto &doubleColoredString : doubleColoredLine) {
-				const auto [same, different] = FindDoubleColored(file, doubleColoredString);
+				const auto [original, same, different] = FindDoubleColored(file, doubleColoredString);
+				const auto originalId = InputIdFromString(original);
 				const auto sameId = InputIdFromString(same);
 				const auto differentId = InputIdFromString(different);
-				if (sameId.empty() || differentId.empty()) {
+				if (originalId.empty() || sameId.empty() || differentId.empty()) {
 					return InputData();
-				} else if (sameId.size() < 2 || differentId.size() < 7) {
+				} else if (originalId.size() < 1 || sameId.size() < 2 || differentId.size() < 7) {
 					logDataError()
 						<< "Bad double colored emoji: "
-						<< same.toStdString()
+						<< original.toStdString()
 						<< ", " << different.toStdString();
 					return InputData();
 				}
-				result.doubleColored.push_back({ sameId, differentId });
+				result.doubleColored.push_back({ originalId, sameId, differentId });
 			}
 		}
 	}
 	auto index = 0;
-	for (const auto &section : file[1]) {
-		for (const auto &line : section) {
+	auto replacementsUsed = 0;
+	for (const auto &section : file[0]) {
+		const auto first = section.front().front();
+		const auto replacedSection = [&]() -> const Part* {
+			for (const auto &section : file[1]) {
+				if (section.front().front() == first) {
+					++replacementsUsed;
+					return &section;
+				}
+			}
+			return nullptr;
+		}();
+		const auto &sectionData = replacedSection
+			? *replacedSection
+			: section;
+		for (const auto &line : sectionData) {
 			for (const auto &string : line) {
 				const auto inputId = InputIdFromString(string);
 				if (inputId.empty()) {
@@ -237,6 +261,10 @@ InputData ReadData(const QString &path) {
 		if (index + 1 < std::size(result.categories)) {
 			++index;
 		}
+	}
+	if (replacementsUsed != file[1].size()) {
+		logDataError() << "Could not use some non-colored section replacements!";
+		return InputData();
 	}
 	if (file.size() > 3) {
 		for (const auto &section : file[3]) {

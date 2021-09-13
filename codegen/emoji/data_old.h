@@ -19,6 +19,7 @@ using uint64 = quint64;
 using InputId = std::vector<uint32>;
 using InputCategory = std::vector<InputId>;
 struct DoubleColored {
+	InputId original;
 	InputId same;
 	InputId different;
 };

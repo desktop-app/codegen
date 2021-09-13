@@ -150,7 +150,7 @@ uint32 countCrc32(const void *data, std::size_t size) {
 
 Generator::Generator(const Options &options) : project_(Project)
 , writeImages_(options.writeImages)
-, data_(PrepareData(options.dataPath))
+, data_(PrepareData(options.dataPath, options.oldDataPaths))
 , replaces_(PrepareReplaces(options.replacesPath)) {
 	QDir dir(options.outputPath);
 	if (!dir.mkpath(".")) {

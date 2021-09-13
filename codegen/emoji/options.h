@@ -16,6 +16,7 @@ struct Options {
 	QString outputPath = ".";
 	QString dataPath;
 	QString replacesPath;
+	std::vector<QString> oldDataPaths;
 	QString writeImages;
 };
 

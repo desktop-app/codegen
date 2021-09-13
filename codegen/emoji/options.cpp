@@ -50,8 +50,7 @@ Options parseOptions() {
 		} else if (result.replacesPath.isEmpty()) {
 			result.replacesPath = arg;
 		} else {
-			logError(kErrorOneReplacesPathExpected, "Command Line") << "only one replaces path expected";
-			return Options();
+			result.oldDataPaths.push_back(arg);
 		}
 	}
 	if (result.outputPath.isEmpty()) {

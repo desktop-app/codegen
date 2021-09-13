@@ -35,9 +35,12 @@ struct Data {
 	std::vector<std::vector<int>> categories;
 	std::map<QString, int, std::greater<QString>> replaces;
 };
-[[nodiscard]] Data PrepareData(const QString &dataPath);
+[[nodiscard]] Data PrepareData(
+	const QString &dataPath,
+	const std::vector<QString> &oldDataPaths);
 
 constexpr auto kPostfix = 0xFE0FU;
+constexpr auto kJoiner = 0x200DU;
 
 [[nodiscard]] common::LogStream logDataError();
 
