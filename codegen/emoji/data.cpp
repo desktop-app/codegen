@@ -123,6 +123,7 @@ std::map<InputId, InputId> FlagAliases = {
 };
 
 std::map<Id, std::vector<Id>> Aliases; // original -> list of aliased
+std::set<Id> AliasesAdded;
 
 void AddAlias(const Id &original, const Id &aliased) {
 	auto &aliases = Aliases[original];
@@ -211,14 +212,16 @@ void append(Id &id, uint32 code) {
 				return {};
 			}
 			for (const auto color : Colors) {
-				auto sameWithColor = BareIdFromInput(same);
-				sameWithColor[1] = color;
-				auto differentWithColor = BareIdFromInput(different);
-				for (auto &entry : differentWithColor) {
+				auto copy = same;
+				copy[1] = color;
+				auto sameWithColor = BareIdFromInput(copy);
+				copy = different;
+				for (auto &entry : copy) {
 					if (entry == Colors[0] || entry == Colors[1]) {
 						entry = color;
 					}
 				}
+				auto differentWithColor = BareIdFromInput(copy);
 				AddAlias(sameWithColor, differentWithColor);
 			}
 		} else {
@@ -238,14 +241,16 @@ void append(Id &id, uint32 code) {
 				// original: 1
 				// add an alias to 'same' in the form of 'original + color'
 				for (const auto color : Colors) {
-					auto originalWithColor = BareIdFromInput(original);
-					originalWithColor.push_back(color);
-					auto sameWithColor = BareIdFromInput(same);
-					for (auto &entry : sameWithColor) {
+					auto copy = original;
+					copy.push_back(color);
+					auto originalWithColor = BareIdFromInput(copy);
+					copy = same;
+					for (auto &entry : copy) {
 						if (entry == ColorMask) {
 							entry = color;
 						}
 					}
+					auto sameWithColor = BareIdFromInput(copy);
 					AddAlias(originalWithColor, sameWithColor);
 				}
 			}
@@ -301,6 +306,7 @@ void appendCategory(
 				it = result.map.emplace(bareId, index).first;
 				result.list.push_back(move(emoji));
 				if (const auto a = Aliases.find(bareId); a != end(Aliases)) {
+					AliasesAdded.emplace(bareId);
 					for (const auto &alias : a->second) {
 						const auto ok = result.map.emplace(alias, index).second;
 						if (!ok) {
@@ -365,6 +371,7 @@ void appendCategory(
 		} else if (const auto d = doubleVariatedIds.find(bareId); d != end(doubleVariatedIds)) {
 			//result.list[it->second].doubleVariated = true;
 
+			const auto baseId = bareId;
 			const auto &different = d->second;
 			if (different.size() < 4
 				|| different[1] != Colors[0]
@@ -377,18 +384,18 @@ void appendCategory(
 				for (auto color2 : Colors) {
 					auto colored = Emoji();
 					//colored.colored = true;
-					// We filled those as aliases were applicable.
-//					if (color1 == color2) {
-//						colored.id = baseId;
-//						append(colored.id, color1);
-//					} else {
-					auto copy = different;
-					copy[1] = color1;
-					copy[copy.size() - 1] = color2;
-					for (const auto code : copy) {
-						append(colored.id, code);
+					if (color1 == color2 && baseId.size() == 2) {
+						colored.id = baseId;
+						append(colored.id, color1);
+					} else {
+						auto copy = different;
+						copy[1] = color1;
+						copy[copy.size() - 1] = color2;
+						for (const auto code : copy) {
+							append(colored.id, code);
+						}
 					}
-					auto bareColoredId = BareIdFromInput(copy);
+					auto bareColoredId = colored.id.replace(QChar(kPostfix), QString());
 					if (addOne(bareColoredId, move(colored)) == result.map.end()) {
 						return;
 					}
@@ -709,6 +716,20 @@ Data PrepareData(const QString &dataPath, const std::vector<QString> &oldDataPat
 	}
 	appendCategory(result, input.other, variatedIds, doubleVariatedIds, postfixRequiredIds);
 	if (result.list.empty()) {
+		return Data();
+	}
+	if (AliasesAdded.size() != Aliases.size()) {
+		for (const auto &[key, list] : Aliases) {
+			if (AliasesAdded.find(key) == AliasesAdded.end()) {
+				QStringList expanded;
+				for (const auto ch : key) {
+					expanded.push_back(QString::number(ch.unicode()));
+				}
+				common::logError(kErrorBadData, "input")
+					<< "Bad data: Not added aliases list for: "
+					<< expanded.join(QChar(',')).toStdString();
+			}
+		}
 		return Data();
 	}
 

@@ -294,6 +294,9 @@ Replaces PrepareReplaces(const QString &filename) {
 }
 
 bool CheckAndConvertReplaces(Replaces &replaces, const Data &data) {
+	if (data.map.empty()) {
+		return false;
+	}
 	auto result = Replaces(replaces.filename);
 	auto sorted = QMultiMap<Id, Replace>();
 	auto findId = [&](const Id &id) {

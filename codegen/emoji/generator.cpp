@@ -46,11 +46,17 @@ QRect computeSourceRect(const QImage &image) {
 	auto top = 1, bottom = 1, left = 1, right = 1;
 	auto rgbBits = reinterpret_cast<const QRgb*>(image.constBits());
 	for (auto i = 0; i != size; ++i) {
-		if (rgbBits[i] > 0
-			|| rgbBits[(size - 1) * size + i] > 0
-			|| rgbBits[i * size] > 0
-			|| rgbBits[i * size + (size - 1)] > 0) {
-			logDataError() << "Bad border.";
+		if (rgbBits[i] > 0) {
+			logDataError() << "Bad top border.";
+			return QRect();
+		} else if (rgbBits[(size - 1) * size + i] > 0) {
+			logDataError() << "Bad bottom border.";
+			return QRect();
+		} else if (rgbBits[i * size] > 0) {
+			logDataError() << "Bad left border.";
+			return QRect();
+		} else if (rgbBits[i * size + (size - 1)] > 0) {
+			logDataError() << "Bad right border.";
 			return QRect();
 		}
 		if (rgbBits[1 * size + i] > 0) {
@@ -186,15 +192,15 @@ constexpr auto kEmojiRowsInFile = 16;
 constexpr auto kEmojiQuality = 99;
 constexpr auto kEmojiSize = 72;
 constexpr auto kEmojiFontSize = 72;
-constexpr auto kEmojiDelta = 67 - 4;
+constexpr auto kEmojiShiftTop = 67 - 4;
 constexpr auto kScaleFromLarge = true;
 constexpr auto kLargeEmojiSize = 180;
 constexpr auto kLargeEmojiFontSizeMac = 180;
-constexpr auto kLargeEmojiDeltaMac = 167 - 9;
-constexpr auto kEmojiShiftMac = 0;
+constexpr auto kLargeEmojiShiftTopMac = 167 - 9;
+constexpr auto kEmojiShiftLeftMac = 0;
 constexpr auto kLargeEmojiFontSizeAndroid = 178;
-constexpr auto kLargeEmojiDeltaAndroid = 140;
-constexpr auto kEmojiShiftAndroid = -4;
+constexpr auto kLargeEmojiShiftTopAndroid = 140;
+constexpr auto kEmojiShiftLeftAndroid = -4;
 
 enum class ImageType {
 	Mac,
@@ -220,15 +226,23 @@ bool PaintSingleFromFont(QPainter &p, QRect targetRect, const Emoji &data, QFont
 		QPainter q(&singleImage);
 		q.setPen(QColor(0, 0, 0, 255));
 		q.setFont(font);
-		const auto delta = !kScaleFromLarge
-			? kEmojiDelta
+		const auto shiftTop = !kScaleFromLarge
+			? kEmojiShiftTop
 			: (type == ImageType::Mac)
-			? kLargeEmojiDeltaMac
-			: kLargeEmojiDeltaAndroid;
-		const auto shift = (type == ImageType::Mac)
-			? kEmojiShiftMac
-			: kEmojiShiftAndroid;
-		q.drawText(2 + shift, 2 + delta, data.id);
+			? kLargeEmojiShiftTopMac
+			: kLargeEmojiShiftTopAndroid;
+		const auto shiftLeft = (type == ImageType::Mac)
+			? kEmojiShiftLeftMac
+			: kEmojiShiftLeftAndroid;
+		auto text = data.id;
+		if (type == ImageType::Android) {
+			if (text.size() > 2 && text.indexOf(QChar(0xFE0F)) >= 0) {
+				// Some emoji, like "Kiss: Person, Person, Light Skin Tone, Medium Skin Tone",
+				// aren't rendered correctly if string still contains 0xFE0F-s from Apple.
+				text = text.replace(QChar(0xFE0F), QString());
+			}
+		}
+		q.drawText(2 + shiftLeft, 2 + shiftTop, text);
 	}
 	auto sourceRect = computeSourceRect(singleImage);
 	if (sourceRect.isEmpty()) {
