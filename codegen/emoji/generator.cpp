@@ -291,27 +291,85 @@ bool PaintSingleFromFile(QPainter &p, QRect targetRect, const Emoji &data, const
 		const auto row = targetRect.y() / targetRect.height();
 		p.fillRect(targetRect, ((column + row) % 2) ? QColor(255, 0, 0, 255) : QColor(0, 255, 0, 255));
 	};
-	const auto name = nameParts.join('-');
-	const auto nameFull = namePartsFull.join('-');
-	const auto nameAdded = name + "-fe0f";
-	const auto image = [&] {
-		if (const auto result = QImage(base + '/' + name + ".png"); !result.isNull()) {
-			return result;
-		} else if (const auto full = QImage(base + '/' + nameFull + ".png"); !full.isNull()) {
-			return full;
+	auto checkNames = QStringList();
+	checkNames.push_back(nameParts.join('-'));
+	checkNames.push_back(namePartsFull.join('-'));
+	checkNames.push_back(nameParts.join('-') + "-fe0f");
+	if (type == ImageType::Twemoji) {
+		// Some names have 'fe0f' after a small joined part, while
+		// the data doesn't have it.
+		//
+		// Like, we have in data:
+		// 1f469-1f3fb-200d-2764-200d-1f468-1f3fc
+		// and twemoji has file
+		// 1f469-1f3fb-200d-2764-fe0f-200d-1f468-1f3fc
+		//
+		// But we need to check all combination, because we have:
+		// 1f469-1f3fb-200d-2764-200d-1f48b-200d-1f469-1f3fd
+		// and twemoji has file
+		// 1f469-1f3fb-200d-2764-fe0f-200d-1f48b-200d-1f469-1f3fd
+		//
+		// So we add all the combinations.
+		auto joined = std::vector<QStringList>();
+		auto from = 0;
+		do {
+			auto sep = nameParts.indexOf("200d", from);
+			if (sep < 0) {
+				joined.push_back(nameParts.mid(from));
+			} else if (sep > from) {
+				joined.push_back(nameParts.mid(from, sep - from));
+			}
+			from = sep + 1;
+		} while (from > 0);
+		if (joined.size() > 0) {
+			auto smallIndices = std::vector<int>();
+			for (auto i = 0; i < int(joined.size()); ++i) {
+				if (joined[i].size() == 1) {
+					smallIndices.push_back(i);
+				}
+			}
+			if (!smallIndices.empty()) {
+				// Add all the combinations where some of the small
+				// joined groups have the postfix added and some don't.
+				const auto count = (1U << int(smallIndices.size()));
+				for (auto bits = 0U; bits != count; ++bits) {
+					auto partsWithPostfixes = QStringList();
+					auto smallIndex = 0;
+					for (auto i = 0; i < int(joined.size()); ++i) {
+						partsWithPostfixes.append(joined[i]);
+						if (joined[i].size() == 1) {
+							if (bits & (1U << smallIndex)) {
+								partsWithPostfixes.append("fe0f");
+							}
+							++smallIndex;
+						}
+						if (i + 1 < int(joined.size())) {
+							partsWithPostfixes.append("200d");
+						}
+					}
+					checkNames.push_back(partsWithPostfixes.join('-'));
+				}
+			}
 		}
-		return QImage(base + '/' + nameAdded + ".png");
+	}
+	const auto image = [&] {
+		for (const auto &name : checkNames) {
+			if (const auto result = QImage(base + '/' + name + ".png"); !result.isNull()) {
+				return result;
+			}
+		}
+		return QImage();
 	}();
 	const auto allowDownscale = (type == ImageType::JoyPixels);
 	if (image.isNull()) {
-		std::cout << "NOT FOUND: " << name.toStdString() << std::endl;
+		std::cout << "NOT FOUND: " << checkNames[1].toStdString() << std::endl;
 		fillEmpty();
 		return false;
 	} else if (image.width() != image.height()
 		|| image.width() < targetRect.width()
 		|| image.height() < targetRect.height()
 		|| (!allowDownscale && image.width() != targetRect.width())) {
-		std::cout << "BAD SIZE: " << name.toStdString() << std::endl;
+		std::cout << "BAD SIZE: " << checkNames[1].toStdString() << std::endl;
 		fillEmpty();
 		return false;
 	} else if (allowDownscale && image.width() > targetRect.width()) {
@@ -338,6 +396,10 @@ QImage Generator::generateImage(int imageIndex) {
 			std::cout << "NotoColorEmoji.ttf not loaded from: " << base.toStdString() << std::endl;
 			return QImage();
 		}
+	} else if (type == ImageType::Twemoji) {
+		base += "/assets/72x72";
+	} else if (type == ImageType::JoyPixels) {
+		base += "/png/unicode/512";
 	}
 	if (type == ImageType::Mac || type == ImageType::Android) {
 		const auto family = (type == ImageType::Mac)
