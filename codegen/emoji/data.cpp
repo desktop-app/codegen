@@ -722,7 +722,7 @@ Data PrepareData(const QString &dataPath, const std::vector<QString> &oldDataPat
 		for (const auto &[key, list] : Aliases) {
 			if (AliasesAdded.find(key) == AliasesAdded.end()) {
 				QStringList expanded;
-				for (const auto ch : key) {
+				for (const auto &ch : key) {
 					expanded.push_back(QString::number(ch.unicode()));
 				}
 				common::logError(kErrorBadData, "input")
