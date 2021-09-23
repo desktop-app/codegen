@@ -6,8 +6,8 @@
 //
 #pragma once
 
+#include <vector>
 #include <QtCore/QString>
-#include <QtCore/QStringList>
 
 namespace codegen {
 namespace emoji {
