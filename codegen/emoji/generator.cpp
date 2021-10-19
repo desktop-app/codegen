@@ -10,7 +10,6 @@
 #include <QtCore/QBuffer>
 #include <QtGui/QFontDatabase>
 #include <QtGui/QGuiApplication>
-#include <QtGui/QImage>
 #include <QtGui/QPainter>
 #include <QtCore/QDir>
 
@@ -878,7 +877,7 @@ bool Generator::writeFindFromDictionary(
 	// Returns true if at least one check was finished.
 	auto finishChecksTillKey = [this, &chars, &checkTypes, &tabsUsed, tabs](const QString &key) {
 		auto result = false;
-		while (!chars.isEmpty() && key.midRef(0, chars.size()) != chars) {
+		while (!chars.isEmpty() && !key.startsWith(chars)) {
 			result = true;
 
 			auto wasType = checkTypes.back();
@@ -889,7 +888,7 @@ bool Generator::writeFindFromDictionary(
 				if (wasType == UsedCheckType::Switch) {
 					source_->stream() << tabs(tabsUsed) << "break;\n";
 				}
-				if ((!chars.isEmpty() && key.midRef(0, chars.size()) != chars) || key == chars) {
+				if ((!chars.isEmpty() && !key.startsWith(chars)) || key == chars) {
 					source_->stream() << tabs(tabsUsed) << "}\n";
 				}
 			}
@@ -1024,7 +1023,7 @@ struct ReplacementStruct {\n\
 \n\
 const utf16char ReplacementData[] = {";
 	startBinary();
-	for (auto i = 0, size = replaces_.list.size(); i != size; ++i) {
+	for (auto i = 0, size = int(replaces_.list.size()); i != size; ++i) {
 		auto &replace = replaces_.list[i];
 		if (!writeStringBinary(suggestionsSource_.get(), replace.id)) {
 			return false;

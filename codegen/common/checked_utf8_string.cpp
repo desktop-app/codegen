@@ -6,9 +6,6 @@
 //
 #include "codegen/common/checked_utf8_string.h"
 
-#include <iostream>
-#include <QtCore/QTextCodec>
-
 #include "codegen/common/const_utf8_string.h"
 
 namespace codegen {
@@ -22,10 +19,8 @@ CheckedUtf8String::CheckedUtf8String(const char *string, int size) {
 		return;
 	}
 
-	QTextCodec::ConverterState state;
-	QTextCodec *codec = QTextCodec::codecForName("UTF-8");
-	string_ = codec->toUnicode(string, size, &state);
-	if (state.invalidChars > 0) {
+	string_ = QString::fromUtf8(string, size);
+	if (string_.contains(QChar::ReplacementCharacter)) {
 		valid_ = false;
 	}
 }

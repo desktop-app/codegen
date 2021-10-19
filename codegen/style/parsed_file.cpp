@@ -495,7 +495,7 @@ structure::Value ParsedFile::readPositiveValue() {
 		auto value = tokenValue(numericToken);
 		auto match = QRegularExpression("^\\d+px$").match(value);
 		if (match.hasMatch()) {
-			return { structure::TypeTag::Pixels, value.midRef(0, value.size() - 2).toInt() };
+			return { structure::TypeTag::Pixels, value.mid(0, value.size() - 2).toInt() };
 		}
 	}
 	file_.putBack();

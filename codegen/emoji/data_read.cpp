@@ -20,11 +20,11 @@ using Part = std::vector<Line>;
 using Section = std::vector<Part>;
 using File = std::vector<Section>;
 
-[[nodiscard]] QStringRef Skip(QStringRef data, int endIndex) {
-	return (endIndex >= 0) ? data.mid(endIndex + 1) : QStringRef();
+[[nodiscard]] QStringView Skip(QStringView data, int endIndex) {
+	return (endIndex >= 0) ? data.mid(endIndex + 1) : QStringView();
 }
 
-[[nodiscard]] std::pair<QString, QStringRef> ReadString(QStringRef data) {
+[[nodiscard]] std::pair<QString, QStringView> ReadString(QStringView data) {
 	const auto endIndex = data.indexOf(',');
 	auto parse = data.mid(0, endIndex);
 	const auto start = parse.indexOf('"');
@@ -35,7 +35,7 @@ using File = std::vector<Section>;
 	return { std::move(result), Skip(data, endIndex) };
 }
 
-[[nodiscard]] std::pair<Line, QStringRef> ReadLine(QStringRef data) {
+[[nodiscard]] std::pair<Line, QStringView> ReadLine(QStringView data) {
 	const auto endIndex = data.indexOf('\n');
 	auto parse = data.mid(0, endIndex);
 	auto result = Line();
@@ -52,9 +52,9 @@ using File = std::vector<Section>;
 	return { std::move(result), Skip(data, endIndex) };
 }
 
-[[nodiscard]] std::pair<Part, QStringRef> ReadPart(QStringRef data) {
-	const auto endIndex1 = data.indexOf("\n\n");
-	const auto endIndex2 = data.indexOf("\r\n\r\n");
+[[nodiscard]] std::pair<Part, QStringView> ReadPart(QStringView data) {
+	const auto endIndex1 = data.indexOf(u"\n\n");
+	const auto endIndex2 = data.indexOf(u"\r\n\r\n");
 	const auto endIndex = (endIndex1 >= 0) ? endIndex1 : endIndex2;
 	auto parse = data.mid(0, endIndex);
 	auto result = Part();
@@ -71,9 +71,9 @@ using File = std::vector<Section>;
 	return { std::move(result), Skip(data, endIndex) };
 }
 
-[[nodiscard]] std::pair<Section, QStringRef> ReadSection(QStringRef data) {
-	const auto endIndex1 = data.indexOf("--------");
-	const auto endIndex2 = data.indexOf("========");
+[[nodiscard]] std::pair<Section, QStringView> ReadSection(QStringView data) {
+	const auto endIndex1 = data.indexOf(u"--------");
+	const auto endIndex2 = data.indexOf(u"========");
 	const auto endIndex = (endIndex1 >= 0 && endIndex2 >= 0)
 		? std::min(endIndex1, endIndex2)
 		: std::max(endIndex1, endIndex2);
@@ -100,7 +100,7 @@ using File = std::vector<Section>;
 	const auto bytes = QString::fromUtf8(file.readAll());
 	file.close();
 
-	auto parse = bytes.midRef(0);
+	auto parse = QStringView(bytes);
 	auto result = File();
 	while (true) {
 		auto [section, updated] = ReadSection(parse);
@@ -163,7 +163,7 @@ InputId InputIdFromString(const QString &emoji) {
 		return InputId();
 	}
 	auto result = InputId();
-	for (auto i = 0, size = emoji.size(); i != size; ++i) {
+	for (auto i = 0, size = int(emoji.size()); i != size; ++i) {
 		result.push_back(uint32(emoji[i].unicode()));
 		if (emoji[i].isHighSurrogate()) {
 			if (++i == size || !emoji[i].isLowSurrogate()) {
