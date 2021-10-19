@@ -11,6 +11,7 @@
 #include <functional>
 #include <QtCore/QString>
 #include <QtCore/QSet>
+#include <QtCore/QMap>
 #include "codegen/common/cpp_file.h"
 #include "codegen/style/structure_types.h"
 

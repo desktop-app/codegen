@@ -380,7 +380,7 @@ void Generator::writeSetSearch(const std::set<QString, std::greater<>> &set, Com
 	// Returns true if at least one check was finished.
 	auto finishChecksTillKey = [this, &chars, &checkTypes, &checkLengthHistory, &tabsUsed, tabs](const QString &key) {
 		auto result = false;
-		while (!chars.isEmpty() && key.midRef(0, chars.size()) != chars) {
+		while (!chars.isEmpty() && !key.startsWith(chars)) {
 			result = true;
 
 			auto wasType = checkTypes.back();
@@ -391,7 +391,7 @@ void Generator::writeSetSearch(const std::set<QString, std::greater<>> &set, Com
 				if (wasType == UsedCheckType::Switch) {
 					source_->stream() << tabs(tabsUsed) << "break;\n";
 				}
-				if ((!chars.isEmpty() && key.midRef(0, chars.size()) != chars) || key == chars) {
+				if ((!chars.isEmpty() && !key.startsWith(chars)) || key == chars) {
 					source_->stream() << tabs(tabsUsed) << "}\n";
 					checkLengthHistory.pop_back();
 				}

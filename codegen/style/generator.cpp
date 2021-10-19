@@ -745,7 +745,7 @@ int GetPaletteIndex(QLatin1String name) {\n\
 	// Returns true if at least one check was finished.
 	auto finishChecksTillKey = [&](const QString &key) {
 		auto result = false;
-		while (!chars.isEmpty() && key.midRef(0, chars.size()) != chars) {
+		while (!chars.isEmpty() && !key.startsWith(chars)) {
 			result = true;
 
 			auto wasType = checkTypes.back();
@@ -757,7 +757,7 @@ int GetPaletteIndex(QLatin1String name) {\n\
 				if (wasType == UsedCheckType::Switch) {
 					source_->stream() << tabs(tabsUsed) << "break;\n";
 				}
-				if ((!chars.isEmpty() && key.midRef(0, chars.size()) != chars) || key == chars) {
+				if ((!chars.isEmpty() && !key.startsWith(chars)) || key == chars) {
 					source_->stream() << tabs(tabsUsed) << "}\n";
 				}
 			}
