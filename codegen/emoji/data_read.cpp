@@ -8,6 +8,7 @@
 
 #include "codegen/emoji/data.h"
 #include "codegen/emoji/data_old.h"
+#include "base/qt_adapters.h"
 
 #include <QFile>
 
@@ -21,23 +22,23 @@ using Section = std::vector<Part>;
 using File = std::vector<Section>;
 
 [[nodiscard]] QStringView Skip(QStringView data, int endIndex) {
-	return (endIndex >= 0) ? data.mid(endIndex + 1) : QStringView();
+	return (endIndex >= 0) ? base::StringViewMid(data, endIndex + 1) : QStringView();
 }
 
 [[nodiscard]] std::pair<QString, QStringView> ReadString(QStringView data) {
 	const auto endIndex = data.indexOf(',');
-	auto parse = data.mid(0, endIndex);
+	auto parse = base::StringViewMid(data, 0, endIndex);
 	const auto start = parse.indexOf('"');
 	const auto end = parse.indexOf('"', start + 1);
 	auto result = (start >= 0 && end > start)
-		? parse.mid(start + 1, end - start - 1).toString()
+		? base::StringViewMid(parse, start + 1, end - start - 1).toString()
 		: QString();
 	return { std::move(result), Skip(data, endIndex) };
 }
 
 [[nodiscard]] std::pair<Line, QStringView> ReadLine(QStringView data) {
 	const auto endIndex = data.indexOf('\n');
-	auto parse = data.mid(0, endIndex);
+	auto parse = base::StringViewMid(data, 0, endIndex);
 	auto result = Line();
 	while (true) {
 		auto [string, updated] = ReadString(parse);
@@ -56,7 +57,7 @@ using File = std::vector<Section>;
 	const auto endIndex1 = data.indexOf(u"\n\n");
 	const auto endIndex2 = data.indexOf(u"\r\n\r\n");
 	const auto endIndex = (endIndex1 >= 0) ? endIndex1 : endIndex2;
-	auto parse = data.mid(0, endIndex);
+	auto parse = base::StringViewMid(data, 0, endIndex);
 	auto result = Part();
 	while (true) {
 		auto [line, updated] = ReadLine(parse);
@@ -77,7 +78,7 @@ using File = std::vector<Section>;
 	const auto endIndex = (endIndex1 >= 0 && endIndex2 >= 0)
 		? std::min(endIndex1, endIndex2)
 		: std::max(endIndex1, endIndex2);
-	auto parse = data.mid(0, endIndex);
+	auto parse = base::StringViewMid(data, 0, endIndex);
 	auto result = Section();
 	while (true) {
 		auto [part, updated] = ReadPart(parse);

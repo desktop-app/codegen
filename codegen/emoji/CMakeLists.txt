@@ -27,6 +27,7 @@ PUBLIC
 
 target_link_libraries(codegen_emoji
 PUBLIC
+    desktop-app::lib_base
     desktop-app::codegen_common
     desktop-app::external_qt
 )
