@@ -8,6 +8,7 @@
 
 #include <memory>
 #include <string>
+#include <vector>
 #include <array>
 #include <functional>
 #include <QImage>
