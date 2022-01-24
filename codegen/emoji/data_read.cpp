@@ -8,7 +8,7 @@
 
 #include "codegen/emoji/data.h"
 #include "codegen/emoji/data_old.h"
-#include "base/qt_adapters.h"
+#include "base/qt/qt_string_view.h"
 
 #include <QFile>
 
