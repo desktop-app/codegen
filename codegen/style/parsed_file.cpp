@@ -7,6 +7,8 @@
 #include "codegen/style/parsed_file.h"
 
 #include <iostream>
+#include <QPainter>
+#include <QPainterPath>
 #include <QtCore/QMap>
 #include <QtCore/QDir>
 #include <QtCore/QRegularExpression>
@@ -119,20 +121,40 @@ bool validateAlignString(const QString &value) {
 	return QRegularExpression("^[a-z_]+$").match(value).hasMatch();
 }
 
+Modifier CreateRoundModifier(int radius) {
+	return [radius](QImage &image, int ratio) {
+		image.invertPixels();
+		QPainter p(&image);
+		p.setRenderHint(QPainter::Antialiasing, true);
+		p.setRenderHint(QPainter::SmoothPixmapTransform, true);
+		p.setPen(Qt::NoPen);
+		p.setBrush(Qt::black);
+
+		const auto rect = QRectF(QPointF(), image.size());
+		QPainterPath path;
+		path.addRect(rect);
+		path.addRoundedRect(rect, radius * ratio, radius * ratio);
+
+		p.drawPath(path);
+	};
+}
+
 } // namespace
 
 Modifier GetModifier(const QString &name) {
 	static QMap<QString, Modifier> modifiers;
 	if (modifiers.empty()) {
-		modifiers.insert("invert", [](QImage &image) {
+		modifiers.insert("invert", [](QImage &image, int ratio) {
 			image.invertPixels();
 		});
-		modifiers.insert("flip_horizontal", [](QImage &image) {
+		modifiers.insert("flip_horizontal", [](QImage &image, int ratio) {
 			image = image.mirrored(true, false);
 		});
-		modifiers.insert("flip_vertical", [](QImage &image) {
+		modifiers.insert("flip_vertical", [](QImage &image, int ratio) {
 			image = image.mirrored(false, true);
 		});
+		modifiers.insert("round_small", CreateRoundModifier(3));
+		modifiers.insert("round_large", CreateRoundModifier(6));
 	}
 	return modifiers.value(name);
 }

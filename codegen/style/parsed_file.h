@@ -17,7 +17,7 @@
 namespace codegen {
 namespace style {
 
-using Modifier = std::function<void(QImage &image)>;
+using Modifier = std::function<void(QImage &image, int ratio)>;
 Modifier GetModifier(const QString &name);
 
 // Parses an input file to the internal struct.

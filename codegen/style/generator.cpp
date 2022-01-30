@@ -1048,9 +1048,9 @@ QByteArray iconMaskValuePng(QString filepath) {
 	}
 	for (const auto &modifierName : modifiers) {
 		if (const auto modifier = GetModifier(modifierName)) {
-			modifier(png1x);
-			modifier(png2x);
-			modifier(png3x);
+			modifier(png1x, 1);
+			modifier(png2x, 2);
+			modifier(png3x, 3);
 		} else {
 			common::logError(common::kErrorInternal, filepath) << "modifier should be valid here, name: " << modifierName.toStdString();
 			return result;
