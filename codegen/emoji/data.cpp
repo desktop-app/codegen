@@ -120,6 +120,7 @@ std::map<InputId, InputId> FlagAliases = {
 // { { 0xD83CDDF9U, 0xD83CDDE6U, }, { 0xD83CDDF8U, 0xD83CDDEDU, } },
 // { { 0xD83CDDF2U, 0xD83CDDEBU, }, { 0xD83CDDEBU, 0xD83CDDF7U, } },
 // { { 0xD83CDDEAU, 0xD83CDDE6U, }, { 0xD83CDDEAU, 0xD83CDDF8U, } },
+  { { 0xD83CDDE8U, 0xD83CDDF5U, }, { 0xD83CDDEBU, 0xD83CDDF7U, } },
 };
 
 std::map<Id, std::vector<Id>> Aliases; // original -> list of aliased
