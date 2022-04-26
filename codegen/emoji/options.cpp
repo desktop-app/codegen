@@ -16,7 +16,6 @@ namespace {
 
 constexpr int kErrorOutputPathExpected      = 902;
 constexpr int kErrorReplacesPathExpected    = 903;
-constexpr int kErrorOneReplacesPathExpected = 904;
 
 } // namespace
 
