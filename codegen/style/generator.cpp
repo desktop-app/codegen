@@ -148,6 +148,14 @@ QString paletteColorValue(const structure::data::color &value) {
 	return result;
 }
 
+[[nodiscard]] bool IsValueInHeader(structure::Type type) {
+	switch (type.tag) {
+	case Tag::Int:
+	case Tag::Double: return true;
+	default: return false;
+	}
+}
+
 } // namespace
 
 Generator::Generator(const structure::Module &module, const QString &destBasePath, const common::ProjectInfo &project, bool isPalette)
@@ -273,9 +281,11 @@ QString Generator::typeToDefaultValue(structure::Type type) const {
 }
 
 // Empty result means an error.
-QString Generator::valueAssignmentCode(structure::Value value) const {
+QString Generator::valueAssignmentCode(
+		structure::Value value,
+		bool ignoreCopy) const {
 	auto copy = value.copyOf();
-	if (!copy.isEmpty()) {
+	if (!ignoreCopy && !copy.isEmpty()) {
 		return "st::" + copy.back();
 	}
 
@@ -575,7 +585,25 @@ bool Generator::writeRefsDeclarations() {
 			return false;
 		}
 
-		header_->stream() << "extern const " << type << " &" << name << ";\n";
+		if (IsValueInHeader(value.value.type())) {
+			header_->stream()
+				<< "constexpr "
+				<< type
+				<< " "
+				<< name
+				<< " = "
+				<< valueAssignmentCode(
+					value.value,
+					IsValueInHeader(value.value.type()))
+				<< ";\n";
+		} else {
+			header_->stream()
+				<< "extern const "
+				<< type
+				<< " &"
+				<< name
+				<< ";\n";
+		}
 		return true;
 	});
 
@@ -622,7 +650,15 @@ bool Generator::writeVariableDefinitions() {
 		if (type.isEmpty()) {
 			return false;
 		}
-		source_->stream() << type << " _" << name << " = " << typeToDefaultValue(variable.value.type()) << ";\n";
+		if (!IsValueInHeader(variable.value.type())) {
+			source_->stream()
+				<< type
+				<< " _"
+				<< name
+				<< " = "
+				<< typeToDefaultValue(variable.value.type())
+				<< ";\n";
+		}
 		return true;
 	});
 	return result;
@@ -641,6 +677,9 @@ bool Generator::writeRefsDefinition() {
 		auto type = typeToString(variable.value.type());
 		if (type.isEmpty()) {
 			return false;
+		}
+		if (IsValueInHeader(variable.value.type())) {
+			return true;
 		}
 		source_->stream() << "const " << type << " &" << name << "(";
 		if (isPalette_) {
@@ -944,7 +983,9 @@ void init_" << baseName_ << "(int scale) {\n\
 		if (value.isEmpty()) {
 			return false;
 		}
-		source_->stream() << "\t_" << name << " = " << value << ";\n";
+		if (!IsValueInHeader(variable.value.type())) {
+			source_->stream() << "\t_" << name << " = " << value << ";\n";
+		}
 		return true;
 	})) {
 		return false;
