@@ -1085,7 +1085,7 @@ const ReplacementIndexStruct ReplacementIndexData[] = {\n";
 	startBinary();
 	for (auto i = byCharIndices.cbegin(), e = byCharIndices.cend(); i != e; ++i) {
 		suggestionsSource_->stream() << "\
-	{ utf16char(" << i.key().unicode() << "), medium(" << i.value().size() << ") },\n";
+	{ utf16char(" << QString::number(i.key().unicode()) << "), medium(" << i.value().size() << ") },\n";
 	}
 	suggestionsSource_->stream() << "};\n\
 \n\
