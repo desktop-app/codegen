@@ -223,7 +223,7 @@ InputData ReadData(const QString &path) {
 				const auto differentId = InputIdFromString(different);
 				if (originalId.empty() || sameId.empty() || differentId.empty()) {
 					return InputData();
-				} else if (originalId.size() < 1 || sameId.size() < 2 || differentId.size() < 7) {
+				} else if (originalId.size() < 1 || sameId.size() < 2 || differentId.size() < 5) {
 					logDataError()
 						<< "Bad double colored emoji: "
 						<< original.toStdString()
