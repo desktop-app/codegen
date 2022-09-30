@@ -23,7 +23,7 @@ std::string relativeLocalPath(const QString &filepath) {
 } // namespace
 
 LogStream logError(int code, const QString &filepath, int line) {
-	std::cerr << relativeLocalPath(filepath);
+	std::cerr << filepath.toStdString();
 	if (line > 0) {
 		std::cerr << '(' << line << ')';
 	}
