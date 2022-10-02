@@ -10,6 +10,9 @@ namespace codegen {
 namespace style {
 namespace structure {
 
+data::icon Value::Icon() const { return data_->Icon(); }
+data::icon Value::DataBase::Icon() const { return {}; }
+
 struct Value::DataTypes {
 	class TInt : public DataBase {
 	public:

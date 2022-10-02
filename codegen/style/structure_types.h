@@ -129,7 +129,7 @@ public:
 	data::color Color() const { return data_->Color(); };
 	data::margins Margins() const { return data_->Margins(); };
 	data::font Font() const { return data_->Font(); };
-	data::icon Icon() const { return data_->Icon(); };
+	data::icon Icon() const;
 	const data::fields *Fields() const { return data_->Fields(); };
 	data::fields *Fields() { return data_->Fields(); };
 
@@ -158,7 +158,7 @@ private:
 		virtual data::color Color() const { return {}; };
 		virtual data::margins Margins() const { return {}; };
 		virtual data::font Font() const { return {}; };
-		virtual data::icon Icon() const { return {}; };
+		virtual data::icon Icon() const;
 		virtual const data::fields *Fields() const { return nullptr; };
 		virtual data::fields *Fields() { return nullptr; };
 		virtual ~DataBase() {
