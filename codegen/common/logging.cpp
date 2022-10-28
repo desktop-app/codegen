@@ -15,11 +15,6 @@ namespace {
 
 QString WorkingPath = ".";
 
-std::string relativeLocalPath(const QString &filepath) {
-	auto name = QFile::encodeName(QDir(WorkingPath).relativeFilePath(filepath));
-	return name.constData();
-}
-
 } // namespace
 
 LogStream logError(int code, const QString &filepath, int line) {
