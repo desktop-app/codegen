@@ -1,5 +1,5 @@
 add_executable(codegen_emoji)
-init_target(codegen_emoji ltcg "(codegen)")
+init_target(codegen_emoji "(codegen)")
 
 get_filename_component(src_loc ../.. REALPATH)
 
