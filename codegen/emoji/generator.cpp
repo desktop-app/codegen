@@ -6,23 +6,11 @@
 //
 #include "codegen/emoji/generator.h"
 
-#include <QtCore/QtPlugin>
 #include <QtCore/QBuffer>
 #include <QtGui/QFontDatabase>
 #include <QtGui/QGuiApplication>
 #include <QtGui/QPainter>
 #include <QtCore/QDir>
-
-#ifndef DESKTOP_APP_USE_PACKAGED
-Q_IMPORT_PLUGIN(QWebpPlugin)
-#ifdef Q_OS_MAC
-Q_IMPORT_PLUGIN(QCocoaIntegrationPlugin)
-#elif defined Q_OS_WIN
-Q_IMPORT_PLUGIN(QWindowsIntegrationPlugin)
-#else // !Q_OS_MAC && !Q_OS_WIN
-Q_IMPORT_PLUGIN(QXcbIntegrationPlugin)
-#endif // !Q_OS_MAC && !Q_OS_WIN
-#endif // DESKTOP_APP_USE_PACKAGED
 
 namespace codegen {
 namespace emoji {
