@@ -28,6 +28,7 @@ class Value;
 enum class TypeTag {
 	Invalid,
 	Int,
+	Bool,
 	Double,
 	Pixels,
 	String,
@@ -114,6 +115,9 @@ public:
 	// Can be int / pixels.
 	Value(TypeTag type, int value);
 
+	// Can be only bool.
+	Value(TypeTag type, bool value);
+
 	// Can be string / align.
 	Value(TypeTag type, std::string value);
 
@@ -122,6 +126,7 @@ public:
 
 	Type type() const { return type_; }
 	int Int() const { return data_->Int(); }
+	bool Bool() const { return data_->Bool(); }
 	double Double() const { return data_->Double(); }
 	std::string String() const { return data_->String(); }
 	data::point Point() const { return data_->Point(); }
@@ -151,6 +156,7 @@ private:
 	class DataBase {
 	public:
 		virtual int Int() const { return 0; }
+		virtual bool Bool() const { return false; }
 		virtual double Double() const { return 0.; }
 		virtual std::string String() const { return std::string(); }
 		virtual data::point Point() const { return {}; };

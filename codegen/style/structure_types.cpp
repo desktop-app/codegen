@@ -25,6 +25,17 @@ struct Value::DataTypes {
 
 	};
 
+	class TBool : public DataBase {
+	public:
+		TBool(bool value) : value_(value) {
+		}
+		bool Bool() const override { return value_; }
+
+	private:
+		bool value_;
+
+	};
+
 	class TDouble : public DataBase {
 	public:
 		TDouble(double value) : value_(value) {
@@ -166,6 +177,13 @@ Value::Value(TypeTag type, int value) : Value(type, std::make_shared<DataTypes::
 	}
 }
 
+Value::Value(TypeTag type, bool value) : Value(type, std::make_shared<DataTypes::TBool>(value)) {
+	if (type_.tag != TypeTag::Bool) {
+		type_.tag = TypeTag::Invalid;
+		data_ = std::make_shared<DataBase>();
+	}
+}
+
 Value::Value(TypeTag type, std::string value) : Value(type, std::make_shared<DataTypes::TString>(value)) {
 	if (type_.tag != TypeTag::String &&
 		type_.tag != TypeTag::Align) {
@@ -178,6 +196,7 @@ Value::Value(Type type, Qt::Initialization) : type_(type) {
 	switch (type_.tag) {
 	case TypeTag::Invalid: data_ = std::make_shared<DataBase>(); break;
 	case TypeTag::Int: data_ = std::make_shared<DataTypes::TInt>(0); break;
+	case TypeTag::Bool: data_ = std::make_shared<DataTypes::TBool>(false); break;
 	case TypeTag::Double: data_ = std::make_shared<DataTypes::TDouble>(0.); break;
 	case TypeTag::Pixels: data_ = std::make_shared<DataTypes::TInt>(0); break;
 	case TypeTag::String: data_ = std::make_shared<DataTypes::TString>(""); break;

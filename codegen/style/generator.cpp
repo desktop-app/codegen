@@ -236,6 +236,7 @@ QString Generator::typeToString(structure::Type type) const {
 	switch (type.tag) {
 	case Tag::Invalid: return QString();
 	case Tag::Int: return "int";
+	case Tag::Bool: return "bool";
 	case Tag::Double: return "double";
 	case Tag::Pixels: return "int";
 	case Tag::String: return "QString";
@@ -256,6 +257,7 @@ QString Generator::typeToDefaultValue(structure::Type type) const {
 	switch (type.tag) {
 	case Tag::Invalid: return QString();
 	case Tag::Int: return "0";
+	case Tag::Bool: return "false";
 	case Tag::Double: return "0.";
 	case Tag::Pixels: return "0";
 	case Tag::String: return "QString()";
@@ -292,6 +294,7 @@ QString Generator::valueAssignmentCode(
 	switch (value.type().tag) {
 	case Tag::Invalid: return QString();
 	case Tag::Int: return QString("%1").arg(value.Int());
+	case Tag::Bool: return QString(value.Bool() ? "true" : "false");
 	case Tag::Double: return QString("%1").arg(value.Double());
 	case Tag::Pixels: return pxValueName(value.Int());
 	case Tag::String: return QString("QString::fromUtf8(%1)").arg(stringToEncodedString(value.String()));
@@ -1153,6 +1156,7 @@ bool Generator::collectUniqueValues() {
 		switch (value.type().tag) {
 		case Tag::Invalid:
 		case Tag::Int:
+		case Tag::Bool:
 		case Tag::Double:
 		case Tag::String:
 		case Tag::Color:

@@ -83,6 +83,7 @@ private:
 	structure::Value readColorValue();
 	structure::Value readPointValue();
 	structure::Value readSizeValue();
+	structure::Value readBoolValue();
 	structure::Value readAlignValue();
 	structure::Value readMarginsValue();
 	structure::Value readFontValue();
@@ -117,6 +118,7 @@ private:
 
 	QMap<std::string, structure::Type> typeNames_ = {
 		{ "int"       , { structure::TypeTag::Int } },
+		{ "bool"      , { structure::TypeTag::Bool } },
 		{ "double"    , { structure::TypeTag::Double } },
 		{ "pixels"    , { structure::TypeTag::Pixels } },
 		{ "string"    , { structure::TypeTag::String } },
