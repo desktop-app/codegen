@@ -347,7 +347,8 @@ bool PaintSingleFromFile(QPainter &p, QRect targetRect, const Emoji &data, const
 		}
 		return QImage();
 	}();
-	const auto allowDownscale = (type == ImageType::JoyPixels);
+	const auto allowDownscale = (type == ImageType::JoyPixels)
+		|| (type == ImageType::Twemoji);
 	if (image.isNull()) {
 		std::cout << "NOT FOUND: " << checkNames[1].toStdString() << std::endl;
 		fillEmpty();
