@@ -18,7 +18,6 @@ using std::map;
 using std::set;
 using std::find;
 using std::make_pair;
-using std::move;
 using std::begin;
 using std::end;
 
@@ -319,7 +318,7 @@ void appendCategory(
 			if (it == result.map.cend()) {
 				const auto index = result.list.size();
 				it = result.map.emplace(bareId, index).first;
-				result.list.push_back(move(emoji));
+				result.list.push_back(std::move(emoji));
 				if (const auto a = Aliases.find(bareId); a != end(Aliases)) {
 					AliasesAdded.emplace(bareId);
 					for (const auto &alias : a->second) {
@@ -346,7 +345,7 @@ void appendCategory(
 			return it;
 		};
 
-		auto it = addOne(bareId, move(emoji));
+		auto it = addOne(bareId, std::move(emoji));
 		if (it == result.map.end()) {
 			return;
 		}
@@ -411,7 +410,7 @@ void appendCategory(
 						}
 					}
 					auto bareColoredId = colored.id.replace(QChar(kPostfix), QString());
-					if (addOne(bareColoredId, move(colored)) == result.map.end()) {
+					if (addOne(bareColoredId, std::move(colored)) == result.map.end()) {
 						return;
 					}
 				}
