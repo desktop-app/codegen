@@ -118,7 +118,8 @@ bool validateAnsiString(const QString &value) {
 }
 
 bool validateAlignString(const QString &value) {
-	return QRegularExpression("^[a-z_]+$").match(value).hasMatch();
+	static const auto RegExp = QRegularExpression("^[a-z_]+$");
+	return RegExp.match(value).hasMatch();
 }
 
 } // namespace
@@ -496,8 +497,9 @@ structure::Value ParsedFile::readPositiveValue() {
 	} else if (numericToken.type == BasicType::Double) {
 		return { structure::TypeTag::Double, tokenValue(numericToken).toDouble() };
 	} else if (numericToken.type == BasicType::Name) {
+		static const auto RegExp = QRegularExpression("^\\d+px$");
 		auto value = tokenValue(numericToken);
-		auto match = QRegularExpression("^\\d+px$").match(value);
+		auto match = RegExp.match(value);
 		if (match.hasMatch()) {
 			return { structure::TypeTag::Pixels, base::StringViewMid(value, 0, value.size() - 2).toInt() };
 		}
