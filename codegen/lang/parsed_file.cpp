@@ -13,6 +13,7 @@
 #include <QtCore/QRegularExpression>
 #include "codegen/common/basic_tokenized_file.h"
 #include "codegen/common/logging.h"
+#include "base/qt/qt_string_view.h"
 
 namespace codegen {
 namespace lang {
@@ -173,7 +174,7 @@ QString ParsedFile::extractTagsData(const QString &value, LangPack *to) {
 	finalValue.reserve(value.size() * 2);
 	while (tagStart >= 0) {
 		if (tagStart > tagEnd) {
-			finalValue.append(value.mid(tagEnd, tagStart - tagEnd));
+			finalValue.append(base::StringViewMid(value, tagEnd, tagStart - tagEnd));
 		}
 		++tagStart;
 		tagEnd = value.indexOf('}', tagStart);
@@ -186,7 +187,7 @@ QString ParsedFile::extractTagsData(const QString &value, LangPack *to) {
 		tagStart = value.indexOf('{', tagEnd);
 	}
 	if (tagEnd < value.size()) {
-		finalValue.append(value.mid(tagEnd));
+		finalValue.append(base::StringViewMid(value, tagEnd));
 	}
 	return finalValue;
 }
