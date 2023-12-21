@@ -12,6 +12,7 @@
 #include <QtCore/QRegularExpression>
 #include "codegen/common/basic_tokenized_file.h"
 #include "codegen/common/logging.h"
+#include "base/qt/qt_string_view.h"
 
 using BasicToken = codegen::common::BasicTokenizedFile::Token;
 using BasicType = BasicToken::Type;
@@ -498,7 +499,7 @@ structure::Value ParsedFile::readPositiveValue() {
 		auto value = tokenValue(numericToken);
 		auto match = QRegularExpression("^\\d+px$").match(value);
 		if (match.hasMatch()) {
-			return { structure::TypeTag::Pixels, value.mid(0, value.size() - 2).toInt() };
+			return { structure::TypeTag::Pixels, base::StringViewMid(value, 0, value.size() - 2).toInt() };
 		}
 	}
 	file_.putBack();
