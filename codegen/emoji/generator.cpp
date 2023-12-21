@@ -1035,7 +1035,6 @@ const utf16char ReplacementData[] = {";
 const small ReplacementWordLengths[] = {";
 	startBinary();
 	for (auto &replace : replaces_.list) {
-		auto wordLengths = QStringList();
 		for (auto &word : replace.words) {
 			writeIntBinary(suggestionsSource_.get(), word.size());
 		}
