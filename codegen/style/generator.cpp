@@ -332,7 +332,7 @@ QString Generator::valueAssignmentCode(
 			}
 			family = QString("font%1index").arg(familyIndex);
 		}
-		return QString("{ %1, %2, %3 }").arg(pxValueName(v.size)).arg(v.flags).arg(family);
+		return QString("{ %1, FontFlags::from_raw(%2), %3 }").arg(pxValueName(v.size)).arg(v.flags).arg(family);
 	} break;
 	case Tag::Icon: {
 		auto v(value.Icon());
@@ -1028,7 +1028,7 @@ bool Generator::writeFontFamiliesInit() {
 	source_->stream() << "void initFontFamilies() {\n";
 	for (auto i = fontFamilies_.cbegin(), e = fontFamilies_.cend(); i != e; ++i) {
 		auto family = stringToEncodedString(i.key());
-		source_->stream() << "\tfont" << i.value() << "index = style::internal::registerFontFamily(" << family << ");\n";
+		source_->stream() << "\tfont" << i.value() << "index = style::internal::RegisterFontFamily(" << family << ");\n";
 	}
 	source_->stream() << "}\n\n";
 	return true;
