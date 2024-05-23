@@ -136,6 +136,12 @@ Modifier GetModifier(const QString &name) {
 		modifiers.insert("flip_vertical", [](QImage &image) {
 			image = image.mirrored(false, true);
 		});
+		modifiers.insert("rotate_cw", [](QImage &image) {
+			image = std::move(image).transformed(QTransform().rotate(90));
+		});
+		modifiers.insert("rotate_ccw", [](QImage &image) {
+			image = std::move(image).transformed(QTransform().rotate(-90));
+		});
 	}
 	return modifiers.value(name);
 }
