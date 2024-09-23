@@ -168,12 +168,12 @@ template <>\n\
 struct phrase<" << tags.join(", ") << "> {\n\
 	template <typename P = details::Identity>\n\
 	rpl::producer<S<P>> operator()(" << producerArgs.join(", ") << ") const {\n\
-		return ::Lang::details::Producer<" << tags.join(", ") << ">::template Combine(" << values.join(", ") << ");\n\
+		return ::Lang::details::Producer<" << tags.join(", ") << ">::Combine(" << values.join(", ") << ");\n\
 	}\n\
 \n\
 	template <typename P = details::Identity>\n\
 	S<P> operator()(now_t, " << currentArgs.join(", ") << ") const {\n\
-		return ::Lang::details::Producer<" << tags.join(", ") << ">::template Current(" << values.join(", ") << ");\n\
+		return ::Lang::details::Producer<" << tags.join(", ") << ">::Current(" << values.join(", ") << ");\n\
 	}\n\
 \n\
 	ushort base;\n\
