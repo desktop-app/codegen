@@ -221,7 +221,7 @@ QChar DefaultData[] = {";
 				}
 				source_->stream() << " ";
 			}
-			source_->stream() << "0x" << QString::number(ch.unicode(), 16);
+			source_->stream() << "QChar(0x" << QString::number(ch.unicode(), 16) << ")";
 			++fulllength;
 		}
 	}
