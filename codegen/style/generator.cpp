@@ -133,9 +133,9 @@ QString colorFallbackName(structure::Value value) {
 QChar paletteColorPart(uchar part) {
 	part = (part & 0x0F);
 	if (part >= 10) {
-		return 'a' + (part - 10);
+		return QChar('a' + (part - 10));
 	}
-	return '0' + part;
+	return QChar('0' + part);
 }
 
 QString paletteColorComponent(uchar value) {

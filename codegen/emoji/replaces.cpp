@@ -85,11 +85,11 @@ bool AddReplacement(Replaces &result, const Id &id, const QString &replacement, 
 	return true;
 }
 
-QString ComposeString(const std::initializer_list<QChar> &chars) {
+QString ComposeString(const std::initializer_list<int> &chars) {
 	auto result = QString();
 	result.reserve(chars.size());
 	for (auto ch : chars) {
-		result.append(ch);
+		result.append(QChar(ch));
 	}
 	return result;
 }
@@ -119,10 +119,10 @@ const auto NotSupported = [] {
 
 const auto ConvertMap = ([] {
 	auto result = QMap<QString, QString>();
-	auto insert = [&result](const std::initializer_list<QChar> &from, const std::initializer_list<QChar> &to) {
+	auto insert = [&result](const std::initializer_list<int> &from, const std::initializer_list<int> &to) {
 		result.insert(ComposeString(from), ComposeString(to));
 	};
-	auto insertWithAdd = [&result](const std::initializer_list<QChar> &from, const QString &added) {
+	auto insertWithAdd = [&result](const std::initializer_list<int> &from, const QString &added) {
 		auto code = ComposeString(from);
 		result.insert(code, code + added);
 	};
