@@ -845,14 +845,16 @@ QString ParsedFile::readMonoIconFilename() {
 				}
 			}
 			for (auto &path : options_.includePaths) {
-				QFileInfo fileinfo(path + '/' + filepath + ".png");
-				if (fileinfo.exists()) {
+				QFileInfo png(path + '/' + filepath + ".png");
+				QFileInfo svg(path + '/' + filepath + ".svg");
+				if (png.exists() || svg.exists()) {
 					return path + '/' + fullpath;
 				}
 			}
 			for (auto &path : options_.includePaths) {
-				QFileInfo fileinfo(path + "/icons/" + filepath + ".png");
-				if (fileinfo.exists()) {
+				QFileInfo png(path + "/icons/" + filepath + ".png");
+				QFileInfo svg(path + "/icons/" + filepath + ".svg");
+				if (png.exists() || svg.exists()) {
 					return path + "/icons/" + fullpath;
 				}
 			}

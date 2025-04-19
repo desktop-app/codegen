@@ -16,6 +16,7 @@
 #include <QtCore/QBuffer>
 #include <QtGui/QImage>
 #include <QtGui/QPainter>
+#include <QtSvg/QSvgRenderer>
 #include "codegen/style/parsed_file.h"
 
 using Module = codegen::style::structure::Module;
@@ -1050,6 +1051,43 @@ QByteArray iconMaskValueSize(int width, int height) {
 	return result;
 }
 
+QByteArray iconMaskValueSvg(QString filepath) {
+	QFileInfo fileInfo(filepath);
+	auto directory = fileInfo.dir();
+	auto nameAndModifiers = fileInfo.fileName().split('-');
+	filepath = directory.filePath(nameAndModifiers[0]);
+	auto modifiers = nameAndModifiers.mid(1);
+
+	const auto path = filepath + ".svg";
+	auto file = QFile(path);
+	if (!file.open(QIODevice::ReadOnly)) {
+		common::logError(common::kErrorFileNotOpened, path) << "could not open icon file";
+		return {};
+	}
+	const auto bytes = file.readAll();
+	file.close();
+	if (!QSvgRenderer(bytes).isValid()) {
+		common::logError(common::kErrorFileNotOpened, path) << "invalid svg data";
+		return {};
+	}
+	for (const auto &modifierName : modifiers) {
+		if (const auto modifier = GetModifier(modifierName)) {
+			common::logError(common::kErrorInternal, filepath) << "modifiers not supported for svg yet";
+			return {};
+		} else {
+			common::logError(common::kErrorInternal, filepath) << "modifier should be valid here, name: " << modifierName.toStdString();
+			return {};
+		}
+	}
+
+	QByteArray result;
+	QLatin1String svgTag("SVG:");
+	result.reserve(svgTag.size() + bytes.size());
+	result.append(svgTag.data(), svgTag.size());
+	result.append(bytes);
+	return result;
+}
+
 QByteArray iconMaskValuePng(QString filepath) {
 	QByteArray result;
 
@@ -1132,6 +1170,8 @@ bool Generator::writeIconValues() {
 				return false;
 			}
 			maskData = iconMaskValueSize(dimensions.at(0).toInt(), dimensions.at(1).toInt());
+		} else if (QFileInfo(filePath + ".svg").exists()) {
+			maskData = iconMaskValueSvg(filePath);
 		} else {
 			maskData = iconMaskValuePng(filePath);
 		}
