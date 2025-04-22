@@ -20,6 +20,8 @@ namespace style {
 using Modifier = std::function<void(QImage &image)>;
 Modifier GetModifier(const QString &name);
 
+[[nodiscard]] std::optional<QSize> GetSizeModifier(const QString &value);
+
 // Parses an input file to the internal struct.
 class ParsedFile {
 public:

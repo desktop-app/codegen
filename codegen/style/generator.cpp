@@ -1070,10 +1070,13 @@ QByteArray iconMaskValueSvg(QString filepath) {
 		common::logError(common::kErrorFileNotOpened, path) << "invalid svg data";
 		return {};
 	}
+	auto size = QSize();
 	for (const auto &modifierName : modifiers) {
 		if (const auto modifier = GetModifier(modifierName)) {
 			common::logError(common::kErrorInternal, filepath) << "modifiers not supported for svg yet";
 			return {};
+		} else if (const auto sizeOverride = GetSizeModifier(modifierName)) {
+			size = *sizeOverride;
 		} else {
 			common::logError(common::kErrorInternal, filepath) << "modifier should be valid here, name: " << modifierName.toStdString();
 			return {};
@@ -1082,8 +1085,18 @@ QByteArray iconMaskValueSvg(QString filepath) {
 
 	QByteArray result;
 	QLatin1String svgTag("SVG:");
-	result.reserve(svgTag.size() + bytes.size());
+	QLatin1String sizeTag("SIZE:");
+	result.reserve(svgTag.size()
+		+ (size.isEmpty() ? 0 : (sizeTag.size() + 8))
+		+ bytes.size());
 	result.append(svgTag.data(), svgTag.size());
+	if (!size.isEmpty()) {
+		result.append(sizeTag.data(), sizeTag.size());
+
+		QDataStream stream(&result, QIODevice::Append);
+		stream.setVersion(QDataStream::Qt_5_1);
+		stream << qint32(size.width()) << qint32(size.height());
+	}
 	result.append(bytes);
 	return result;
 }
@@ -1133,6 +1146,16 @@ QByteArray iconMaskValuePng(QString filepath) {
 			modifier(png1x);
 			modifier(png2x);
 			modifier(png3x);
+		} else if (const auto size = GetSizeModifier(modifierName)) {
+			const auto scale = [](QImage &image, QSize size) {
+				image = image.scaled(
+					size,
+					Qt::IgnoreAspectRatio,
+					Qt::SmoothTransformation);
+			};
+			scale(png1x, *size);
+			scale(png2x, *size * 2);
+			scale(png3x, *size * 3);
 		} else {
 			common::logError(common::kErrorInternal, filepath) << "modifier should be valid here, name: " << modifierName.toStdString();
 			return result;
@@ -1170,7 +1193,7 @@ bool Generator::writeIconValues() {
 				return false;
 			}
 			maskData = iconMaskValueSize(dimensions.at(0).toInt(), dimensions.at(1).toInt());
-		} else if (QFileInfo(filePath + ".svg").exists()) {
+		} else if (QFileInfo(QStringView(filePath).split('-')[0].toString() + ".svg").exists()) {
 			maskData = iconMaskValueSvg(filePath);
 		} else {
 			maskData = iconMaskValuePng(filePath);
