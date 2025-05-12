@@ -1186,6 +1186,7 @@ bool Generator::writeIconValues() {
 	for (auto i = iconMasks_.cbegin(), e = iconMasks_.cend(); i != e; ++i) {
 		QString filePath = i.key();
 		QByteArray maskData;
+		QFileInfo fileInfo(filePath);
 		if (filePath.startsWith("size://")) {
 			QStringList dimensions = filePath.mid(7).split(',');
 			if (dimensions.size() < 2 || dimensions.at(0).toInt() <= 0 || dimensions.at(1).toInt() <= 0) {
@@ -1193,7 +1194,7 @@ bool Generator::writeIconValues() {
 				return false;
 			}
 			maskData = iconMaskValueSize(dimensions.at(0).toInt(), dimensions.at(1).toInt());
-		} else if (QFileInfo(QStringView(filePath).split('-')[0].toString() + ".svg").exists()) {
+		} else if (QFileInfo(fileInfo.dir().absoluteFilePath(fileInfo.fileName().split('-')[0] + ".svg")).exists()) {
 			maskData = iconMaskValueSvg(filePath);
 		} else {
 			maskData = iconMaskValuePng(filePath);
