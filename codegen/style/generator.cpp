@@ -305,6 +305,8 @@ QString Generator::valueAssignmentCode(
 			return QString("st::windowFg");
 		} else if (v.red == v.green && v.red == v.blue && v.red == 255 && v.alpha == 0) {
 			return QString("st::transparent");
+		} else if (v.red == v.green && v.red == v.blue && v.red == 255 && v.alpha == 255) {
+			return QString("st::white");
 		} else {
 			common::logError(common::kErrorInternal, "") << "bad color value";
 			return QString();
@@ -446,12 +448,13 @@ bool Generator::writePaletteDefinition() {
 class palette;\n\
 class palette_data {\n\
 public:\n\
-	static constexpr auto kCount = " << (1 + module_.variablesCount()) << ";\n\
+	static constexpr auto kCount = " << (2 + module_.variablesCount()) << ";\n\
 	static int32 Checksum();\n\
 \n\
-	inline const color &transparent() const { return _colors[0]; }; // special color\n";
+	inline const color &transparent() const { return _colors[0]; }; // special color\n\
+	inline const color &white() const { return _colors[1]; }; // special color\n";
 
-	auto indexInPalette = 1;
+	auto indexInPalette = 2;
 	if (!module_.enumVariables([&](const Variable &variable) -> bool {
 		auto name = variable.name.back();
 		if (variable.value.type().tag != structure::TypeTag::Color) {
@@ -581,6 +584,7 @@ bool Generator::writeRefsDeclarations() {
 
 	if (isPalette_) {
 		header_->stream() << "extern const style::color &transparent; // special color\n";
+		header_->stream() << "extern const style::color &white; // special color\n";
 	}
 	bool result = module_.enumVariables([&](const Variable &value) -> bool {
 		auto name = value.name.back();
@@ -675,6 +679,7 @@ bool Generator::writeRefsDefinition() {
 
 	if (isPalette_) {
 		source_->stream() << "const style::color &transparent(_palette.transparent()); // special color\n";
+		source_->stream() << "const style::color &white(_palette.white()); // special color\n";
 	}
 	bool result = module_.enumVariables([&](const Variable &variable) -> bool {
 		auto name = variable.name.back();
@@ -700,7 +705,8 @@ bool Generator::writeRefsDefinition() {
 bool Generator::writeSetPaletteColor() {
 	source_->stream() << "\n\
 void palette_data::finalize(palette &that) {\n\
-	that.compute(0, -1, { 255, 255, 255, 0}); // special color\n";
+	that.compute(0, -1, { 255, 255, 255, 0}); // special color transparent\n\
+	that.compute(1, -1, { 255, 255, 255, 255}); // special color white\n";
 
 	QList<structure::FullName> names;
 	module_.enumVariables([&](const Variable &variable) -> bool {
@@ -709,9 +715,10 @@ void palette_data::finalize(palette &that) {\n\
 	});
 
 	QString dataRows;
-	int indexInPalette = 1;
+	int indexInPalette = 2;
 	QByteArray checksumString;
 	checksumString.append("&transparent:{ 255, 255, 255, 0 }");
+	checksumString.append("&white:{ 255, 255, 255, 255 }");
 	auto result = module_.enumVariables([&](const Variable &variable) -> bool {
 		auto name = variable.name.back();
 		auto index = indexInPalette++;
