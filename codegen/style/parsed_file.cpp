@@ -853,12 +853,23 @@ structure::Value ParsedFile::readCopyValue() {
 			auto result = variable->value;
 			while (file_.getToken(BasicType::Dot)) {
 				if (auto fieldName = file_.getToken(BasicType::Name)) {
+					auto fieldNameStr = tokenValue(fieldName);
+					if (result.type().tag == structure::TypeTag::Size) {
+						if (fieldNameStr == "width") {
+							return { structure::TypeTag::Pixels, result.Size().width };
+						} else if (fieldNameStr == "height") {
+							return { structure::TypeTag::Pixels, result.Size().height };
+						} else {
+							logError(kErrorUnknownField) << "size has only 'width' and 'height' fields";
+							return {};
+						}
+					}
 					auto *fields = result.Fields();
 					if (!fields) {
 						logError(kErrorTypeMismatch) << "'" << logFullName(name) << "' is not a struct";
 						return {};
 					}
-					structure::FullName fieldFullName = { tokenValue(fieldName) };
+					structure::FullName fieldFullName = { fieldNameStr };
 					bool found = false;
 					for (const auto &field : *fields) {
 						if (field.variable.name == fieldFullName) {
@@ -868,7 +879,10 @@ structure::Value ParsedFile::readCopyValue() {
 						}
 					}
 					if (!found) {
-						logError(kErrorUnknownField) << "field '" << tokenValue(fieldName).toStdString() << "' not found";
+						logError(kErrorUnknownField)
+							<< "field '"
+							<< fieldNameStr.toStdString()
+							<< "' not found";
 						return {};
 					}
 				} else {
