@@ -529,7 +529,79 @@ structure::Value ParsedFile::readPositiveValue() {
 }
 
 structure::Value ParsedFile::readNumericValue() {
-	if (auto value = readPositiveValue()) {
+	auto readNumericOrCopy = [this]() -> structure::Value {
+		if (auto value = readPositiveValue()) {
+			return value;
+		} else if (auto copy = readCopyValue()) {
+			auto type = copy.type().tag;
+			if (type == structure::TypeTag::Int
+				|| type == structure::TypeTag::Double
+				|| type == structure::TypeTag::Pixels) {
+				return copy;
+			} else {
+				file_.putBack();
+			}
+		}
+		return {};
+	};
+
+	if (auto value = readNumericOrCopy()) {
+		auto applyArithmetic = [&](auto operation, const char *name) {
+			if (auto rightValue = readNumericOrCopy()) {
+				if (value.type().tag != rightValue.type().tag) {
+					logErrorTypeMismatch()
+						<< "cannot "
+						<< name
+						<< " different types";
+					return false;
+				}
+				if (value.type().tag == structure::TypeTag::Pixels) {
+					value = {
+						structure::TypeTag::Pixels,
+						operation(value.Int(), rightValue.Int()),
+					};
+				} else if (value.type().tag == structure::TypeTag::Int) {
+					value = {
+						structure::TypeTag::Int,
+						operation(value.Int(), rightValue.Int()),
+					};
+				} else if (value.type().tag == structure::TypeTag::Double) {
+					value = {
+						structure::TypeTag::Double,
+						operation(value.Double(), rightValue.Double()),
+					};
+				} else {
+					logErrorTypeMismatch()
+						<< "cannot "
+						<< name
+						<< " this type";
+					return false;
+				}
+				return true;
+			}
+			logErrorUnexpectedToken()
+				<< "numeric value after '"
+				<< name
+				<< "'";
+			return false;
+		};
+		while (true) {
+			if (file_.getToken(BasicType::Plus)) {
+				if (!applyArithmetic(
+						[](auto a, auto b) { return a + b; },
+						"add")) {
+					return {};
+				}
+			} else if (file_.getToken(BasicType::Minus)) {
+				if (!applyArithmetic(
+						[](auto a, auto b) { return a - b; },
+						"subtract")) {
+					return {};
+				}
+			} else {
+				break;
+			}
+		}
 		return value;
 	} else if (auto minusToken = file_.getToken(BasicType::Minus)) {
 		if (auto positiveValue = readNumericValue()) {
@@ -778,7 +850,33 @@ structure::Value ParsedFile::readCopyValue() {
 	if (auto copyName = file_.getToken(BasicType::Name)) {
 		structure::FullName name = { tokenValue(copyName) };
 		if (auto variable = module_->findVariable(name)) {
-			return variable->value.makeCopy(variable->name);
+			auto result = variable->value;
+			while (file_.getToken(BasicType::Dot)) {
+				if (auto fieldName = file_.getToken(BasicType::Name)) {
+					auto *fields = result.Fields();
+					if (!fields) {
+						logError(kErrorTypeMismatch) << "'" << logFullName(name) << "' is not a struct";
+						return {};
+					}
+					structure::FullName fieldFullName = { tokenValue(fieldName) };
+					bool found = false;
+					for (const auto &field : *fields) {
+						if (field.variable.name == fieldFullName) {
+							result = field.variable.value;
+							found = true;
+							break;
+						}
+					}
+					if (!found) {
+						logError(kErrorUnknownField) << "field '" << tokenValue(fieldName).toStdString() << "' not found";
+						return {};
+					}
+				} else {
+					logErrorUnexpectedToken() << "field name after '.'";
+					return {};
+				}
+			}
+			return result.makeCopy(variable->name);
 		}
 		file_.putBack();
 	}
