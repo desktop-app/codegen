@@ -863,6 +863,15 @@ structure::Value ParsedFile::readCopyValue() {
 							logError(kErrorUnknownField) << "size has only 'width' and 'height' fields";
 							return {};
 						}
+					} else if (result.type().tag == structure::TypeTag::Point) {
+						if (fieldNameStr == "x") {
+							return { structure::TypeTag::Pixels, result.Point().x };
+						} else if (fieldNameStr == "y") {
+							return { structure::TypeTag::Pixels, result.Point().y };
+						} else {
+							logError(kErrorUnknownField) << "point has only 'x' and 'y' fields";
+							return {};
+						}
 					}
 					auto *fields = result.Fields();
 					if (!fields) {
