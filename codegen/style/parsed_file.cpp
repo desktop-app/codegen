@@ -872,6 +872,19 @@ structure::Value ParsedFile::readCopyValue() {
 							logError(kErrorUnknownField) << "point has only 'x' and 'y' fields";
 							return {};
 						}
+					} else if (result.type().tag == structure::TypeTag::Margins) {
+						if (fieldNameStr == "left") {
+							return { structure::TypeTag::Pixels, result.Margins().left };
+						} else if (fieldNameStr == "top") {
+							return { structure::TypeTag::Pixels, result.Margins().top };
+						} else if (fieldNameStr == "right") {
+							return { structure::TypeTag::Pixels, result.Margins().right };
+						} else if (fieldNameStr == "bottom") {
+							return { structure::TypeTag::Pixels, result.Margins().bottom };
+						} else {
+							logError(kErrorUnknownField) << "margins has only 'left', 'top', 'right' and 'bottom' fields";
+							return {};
+						}
 					}
 					auto *fields = result.Fields();
 					if (!fields) {
