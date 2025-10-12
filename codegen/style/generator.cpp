@@ -305,8 +305,6 @@ QString Generator::valueAssignmentCode(
 			return QString("st::windowFg");
 		} else if (v.red == v.green && v.red == v.blue && v.red == 255 && v.alpha == 0) {
 			return QString("st::transparent");
-		} else if (v.red == v.green && v.red == v.blue && v.red == 255 && v.alpha == 255) {
-			return QString("st::white");
 		} else {
 			common::logError(common::kErrorInternal, "") << "bad color value";
 			return QString();
@@ -736,8 +734,8 @@ void palette_data::finalize(palette &that) {\n\
 		auto isCopy = !variable.value.copyOf().isEmpty();
 		auto colorString = paletteColorValue(color);
 		auto fallbackName = QString();
-		if (fallbackIndex > 0) {
-			auto fallbackVariable = module_.findVariableInModule(names[fallbackIndex - 1], module_);
+		if (fallbackIndex > 1) {
+			auto fallbackVariable = module_.findVariableInModule(names[fallbackIndex - 2], module_);
 			if (fallbackVariable && fallbackVariable->value.type().tag == structure::TypeTag::Color) {
 				fallbackName = fallbackVariable->name.back();
 			}
