@@ -881,6 +881,10 @@ structure::Value ParsedFile::readCopyValue() {
 							return { structure::TypeTag::Pixels, result.Margins().right };
 						} else if (fieldNameStr == "bottom") {
 							return { structure::TypeTag::Pixels, result.Margins().bottom };
+						} else if (fieldNameStr == "leftRight") {
+							return { structure::TypeTag::Pixels, result.Margins().left + result.Margins().right };
+						} else if (fieldNameStr == "topBottom") {
+							return { structure::TypeTag::Pixels, result.Margins().top + result.Margins().bottom };
 						} else {
 							logError(kErrorUnknownField) << "margins has only 'left', 'top', 'right' and 'bottom' fields";
 							return {};
