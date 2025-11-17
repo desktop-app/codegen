@@ -206,7 +206,7 @@ struct field {
 struct monoicon {
 	QString filename;
 	Value color;
-	Value offset;
+	Value padding;
 
 	explicit operator bool() const {
 		return !filename.isEmpty();

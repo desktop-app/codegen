@@ -344,11 +344,11 @@ QString Generator::valueAssignmentCode(
 				return QString();
 			}
 			auto color = valueAssignmentCode(part.color);
-			auto offset = valueAssignmentCode(part.offset);
+			auto padding = valueAssignmentCode(part.padding);
 			parts.push_back(QString("MonoIcon{ &iconMask%1, %2, %3 }").arg(
 				QString::number(maskIndex),
 				color,
-				offset));
+				padding));
 		}
 		return QString("{ %1 }").arg(parts.join(", "));
 	} break;
@@ -1258,8 +1258,11 @@ bool Generator::collectUniqueValues() {
 		case Tag::Icon: {
 			auto v(value.Icon());
 			for (auto &part : v.parts) {
-				pxValues_.insert(part.offset.Point().x, true);
-				pxValues_.insert(part.offset.Point().y, true);
+				auto p(part.padding.Margins());
+				pxValues_.insert(p.left, true);
+				pxValues_.insert(p.top, true);
+				pxValues_.insert(p.right, true);
+				pxValues_.insert(p.bottom, true);
 				if (!iconMasks_.contains(part.filename)) {
 					iconMasks_.insert(part.filename, ++iconMaskIndex);
 				}

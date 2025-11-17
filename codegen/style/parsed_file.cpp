@@ -961,9 +961,12 @@ structure::data::monoicon ParsedFile::readMonoIconFields() {
 			if (color.type().tag == structure::TypeTag::Color) {
 				result.color = color;
 				if (file_.getToken(BasicType::Comma)) {
-					if (auto offset = readValue()) {
-						if (offset.type().tag == structure::TypeTag::Point) {
-							result.offset = offset;
+					if (auto padding = readValue()) {
+						if (padding.type().tag == structure::TypeTag::Margins) {
+							result.padding = padding;
+						} else if (padding.type().tag == structure::TypeTag::Point) {
+							const auto point = padding.Point();
+							result.padding = { structure::data::margins { point.x, point.y, 0, 0 } };
 						} else {
 							logErrorUnexpectedToken() << "icon offset";
 						}
@@ -971,7 +974,7 @@ structure::data::monoicon ParsedFile::readMonoIconFields() {
 						logErrorUnexpectedToken() << "icon offset";
 					}
 				} else {
-					result.offset = { structure::data::point { 0, 0 } };
+					result.padding = { structure::data::margins { 0, 0, 0, 0 } };
 				}
 			} else {
 				logErrorUnexpectedToken() << "icon color";
