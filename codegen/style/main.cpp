@@ -8,11 +8,17 @@
 
 #include "codegen/style/options.h"
 #include "codegen/style/processor.h"
+#include "codegen/style/render_svg.h"
 
 int main(int argc, char *argv[]) {
 	QCoreApplication app(argc, argv);
 
 	auto options = codegen::style::parseOptions();
+
+	if (!options.renderSvgInput.isEmpty()) {
+		return codegen::style::RenderSvg(options);
+	}
+
 	if (options.inputPaths.isEmpty()) {
 		return -1;
 	}

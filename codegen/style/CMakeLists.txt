@@ -16,6 +16,8 @@ PRIVATE
     codegen/style/parsed_file.h
     codegen/style/processor.cpp
     codegen/style/processor.h
+    codegen/style/render_svg.cpp
+    codegen/style/render_svg.h
     codegen/style/structure_types.cpp
     codegen/style/structure_types.h
 )

@@ -18,6 +18,11 @@ struct Options {
 	QString timestampPath;
 	QStringList inputPaths;
 	bool isPalette = false;
+
+	// --render-svg mode: render SVG to PNG preview.
+	QString renderSvgInput;
+	QString renderSvgOutput;
+	int renderSvgSize = 512;
 };
 
 // Parsing failed if inputPath is empty in the result.

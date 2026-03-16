@@ -74,10 +74,30 @@ Options parseOptions() {
 		} else if (arg.startsWith("-w")) {
 			common::logSetWorkingPath(arg.mid(2));
 
+		// Render SVG mode
+		} else if (arg == "--render-svg") {
+			if (i + 2 >= count) {
+				logError(kErrorInputPathExpected, "Command Line") << "expected: --render-svg input.svg output.png [size]";
+				return Options();
+			}
+			result.renderSvgInput = args.at(++i);
+			result.renderSvgOutput = args.at(++i);
+			if (i + 1 < count) {
+				auto ok = false;
+				auto size = args.at(i + 1).toInt(&ok);
+				if (ok && size > 0) {
+					result.renderSvgSize = size;
+					++i;
+				}
+			}
+
 		// Input path
 		} else {
 			result.inputPaths.push_back(arg);
 		}
+	}
+	if (!result.renderSvgInput.isEmpty()) {
+		return result;
 	}
 	if (result.timestampPath.isEmpty()) {
 		logError(kErrorInputPathExpected, "Command Line") << "timestamp path expected";
