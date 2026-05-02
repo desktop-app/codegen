@@ -773,7 +773,8 @@ structure::Value ParsedFile::readFontValue() {
 			structure::Value family, size;
 			do {
 				if (auto formatToken = file_.getToken(BasicType::Name)) {
-					if (tokenValue(formatToken) == "bold") {
+					if (tokenValue(formatToken) == "bold"
+						|| tokenValue(formatToken) == "semibold") {
 						flags |= structure::data::font::Bold;
 						continue;
 					} else if (tokenValue(formatToken) == "italic") {
@@ -781,9 +782,6 @@ structure::Value ParsedFile::readFontValue() {
 						continue;
 					} else if (tokenValue(formatToken) == "underline") {
 						flags |= structure::data::font::Underline;
-						continue;
-					} else if (tokenValue(formatToken) == "semibold") {
-						flags |= structure::data::font::Semibold;
 						continue;
 					} else {
 						file_.putBack();
