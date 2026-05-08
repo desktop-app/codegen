@@ -65,7 +65,10 @@ bool Processor::write(const structure::Module &module) const {
 	};
 
 	Generator generator(module, dstFilePath, project, options_.isPalette);
-	if (!generator.writeHeader() || !generator.writeSource()) {
+	if (!generator.writeHeader()
+		|| !generator.writeSource()
+		|| !generator.writeMasksHeader()
+		|| !generator.writeMasksSource()) {
 		return false;
 	}
 	return true;

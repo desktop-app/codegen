@@ -29,6 +29,8 @@ public:
 
 	bool writeHeader();
 	bool writeSource();
+	bool writeMasksHeader();
+	bool writeMasksSource();
 
 private:
 	QString typeToString(structure::Type type) const;
