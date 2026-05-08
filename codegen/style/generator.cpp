@@ -368,6 +368,12 @@ QString Generator::valueAssignmentCode(
 	case Tag::Icon: {
 		auto v(value.Icon());
 		QStringList parts = { "std::in_place" };
+		const auto scaleArg = useContextPx
+			? QStringLiteral("int(context.key.scale)")
+			: QStringLiteral("scale");
+		const auto dprArg = useContextPx
+			? QStringLiteral("int(context.key.dpr)")
+			: QStringLiteral("style::DevicePixelRatio()");
 		for (const auto &part : v.parts) {
 			auto maskIndex = iconMasks_.value(part.filename, -1);
 			if (maskIndex < 0) {
@@ -375,10 +381,14 @@ QString Generator::valueAssignmentCode(
 			}
 			auto color = valueAssignmentCode(part.color, false, useContextPx);
 			auto padding = valueAssignmentCode(part.padding, false, useContextPx);
-			parts.push_back(QString("style::internal::MonoIcon{ &iconMask%1, %2, %3 }").arg(
+			parts.push_back(QString(
+				"style::internal::MonoIcon{ &iconMask%1, %2, %3, %4, %5 }"
+			).arg(
 				QString::number(maskIndex),
 				color,
-				padding));
+				padding,
+				scaleArg,
+				dprArg));
 		}
 		return QString("{ %1 }").arg(parts.join(", "));
 	} break;
