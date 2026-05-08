@@ -622,6 +622,12 @@ bool Generator::writeIncludesInSource() {
 	if (isPalette_) {
 		source_->include("ui/style/style_core_palette.h");
 		source_->newline();
+	} else {
+		// IconMask data lives in a separate TU (basePath_ + "_masks.cpp") so
+		// it isn't duplicated when a parallel new generator output references
+		// the same masks. The header re-declares them with external linkage.
+		source_->include(baseName_ + "_masks.h");
+		source_->newline();
 	}
 	if (!module_.hasIncludes()) {
 		return true;
@@ -1188,28 +1194,16 @@ bool Generator::writeIconValues() {
 		return true;
 	}
 
+	// Bring extern IconMask names from the separate masks TU into local
+	// scope so the existing `&iconMaskN` references in init_<file>(...)
+	// resolve unchanged.
 	for (auto i = iconMasks_.cbegin(), e = iconMasks_.cend(); i != e; ++i) {
-		QString filePath = i.key();
-		QByteArray maskData;
-		QFileInfo fileInfo(filePath);
-		if (filePath.startsWith("size://")) {
-			QStringList dimensions = filePath.mid(7).split(',');
-			if (dimensions.size() < 2 || dimensions.at(0).toInt() <= 0 || dimensions.at(1).toInt() <= 0) {
-				common::logError(common::kErrorFileNotOpened, filePath) << "bad dimensions";
-				return false;
-			}
-			maskData = iconMaskValueSize(dimensions.at(0).toInt(), dimensions.at(1).toInt());
-		} else if (QFileInfo(fileInfo.dir().absoluteFilePath(fileInfo.fileName().split('-')[0] + ".svg")).exists()) {
-			maskData = iconMaskValueSvg(filePath);
-		} else {
-			maskData = iconMaskValuePng(filePath);
-		}
-		if (maskData.isEmpty()) {
-			return false;
-		}
-		source_->stream() << "const uchar iconMask" << i.value() << "Data[] = " << stringToBinaryArray(std::string(maskData.constData(), maskData.size())) << ";\n";
-		source_->stream() << "IconMask iconMask" << i.value() << "(iconMask" << i.value() << "Data);\n\n";
+		source_->stream()
+			<< "using ::style::masks::"
+			<< baseName_
+			<< "::iconMask" << i.value() << ";\n";
 	}
+	source_->stream() << "\n";
 	return true;
 }
 
@@ -1284,6 +1278,89 @@ bool Generator::collectUniqueValues() {
 		return true;
 	};
 	return module_.enumVariables(collector);
+}
+
+bool Generator::writeMasksHeader() {
+	if (isPalette_) {
+		return true;
+	}
+	auto header = std::make_unique<common::CppFile>(
+		basePath_ + "_masks.h",
+		project_);
+	header->include("ui/style/style_core_icon.h").newline();
+	header->pushNamespace("style").pushNamespace("masks").pushNamespace(baseName_);
+	header->newline();
+
+	// iconMasks_ was populated during writeSource->writeVariableInit; if no
+	// icons exist the namespace is left empty.
+	for (auto i = iconMasks_.cbegin(), e = iconMasks_.cend(); i != e; ++i) {
+		header->stream()
+			<< "extern style::internal::IconMask iconMask"
+			<< i.value() << ";\n";
+	}
+	header->newline();
+
+	return header->finalize();
+}
+
+bool Generator::writeMasksSource() {
+	if (isPalette_) {
+		return true;
+	}
+	auto source = std::make_unique<common::CppFile>(
+		basePath_ + "_masks.cpp",
+		project_);
+	source->newline();
+
+	if (iconMasks_.isEmpty()) {
+		return source->finalize();
+	}
+
+	source->pushNamespace("style").pushNamespace("masks").pushNamespace(baseName_);
+	source->newline().pushNamespace().newline();
+
+	for (auto i = iconMasks_.cbegin(), e = iconMasks_.cend(); i != e; ++i) {
+		const auto filePath = i.key();
+		QByteArray maskData;
+		QFileInfo fileInfo(filePath);
+		if (filePath.startsWith("size://")) {
+			QStringList dimensions = filePath.mid(7).split(',');
+			if (dimensions.size() < 2
+				|| dimensions.at(0).toInt() <= 0
+				|| dimensions.at(1).toInt() <= 0) {
+				common::logError(common::kErrorFileNotOpened, filePath)
+					<< "bad dimensions";
+				return false;
+			}
+			maskData = iconMaskValueSize(
+				dimensions.at(0).toInt(),
+				dimensions.at(1).toInt());
+		} else if (QFileInfo(fileInfo.dir().absoluteFilePath(
+				fileInfo.fileName().split('-')[0] + ".svg")).exists()) {
+			maskData = iconMaskValueSvg(filePath);
+		} else {
+			maskData = iconMaskValuePng(filePath);
+		}
+		if (maskData.isEmpty()) {
+			return false;
+		}
+		source->stream()
+			<< "const uchar iconMask" << i.value() << "Data[] = "
+			<< stringToBinaryArray(std::string(
+				maskData.constData(),
+				maskData.size()))
+			<< ";\n";
+	}
+	source->popNamespace().newline();
+
+	for (auto i = iconMasks_.cbegin(), e = iconMasks_.cend(); i != e; ++i) {
+		source->stream()
+			<< "style::internal::IconMask iconMask" << i.value()
+			<< "(iconMask" << i.value() << "Data);\n";
+	}
+	source->newline();
+
+	return source->finalize();
 }
 
 } // namespace style
