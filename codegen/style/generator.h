@@ -31,13 +31,19 @@ public:
 	bool writeSource();
 	bool writeMasksHeader();
 	bool writeMasksSource();
+	bool writeNewHeader();
+	bool writeNewSource();
 
 private:
+	[[nodiscard]] QString pureBaseName() const;
+
 	QString typeToString(structure::Type type) const;
 	QString typeToDefaultValue(structure::Type type) const;
 	QString valueAssignmentCode(
 		structure::Value value,
-		bool ignoreCopy = false) const;
+		bool ignoreCopy = false,
+		bool useContextPx = false) const;
+	QString pxValueExpression(int value, bool useContextPx) const;
 
 	bool writeHeaderRequiredIncludes();
 	bool writeHeaderStyleNamespace();

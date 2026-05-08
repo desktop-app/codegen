@@ -31,9 +31,14 @@ public:
 	~Processor();
 
 private:
-	bool write(const structure::Module &module) const;
+	bool write(const structure::Module &module);
+	bool writeAggregator() const;
 
 	const Options &options_;
+
+	// Basenames (e.g. "style_widgets") of non-palette modules processed so
+	// far. Used to emit the per-package aggregator at the end.
+	QStringList moduleBaseNames_;
 
 };
 

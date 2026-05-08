@@ -74,6 +74,17 @@ Options parseOptions() {
 		} else if (arg.startsWith("-w")) {
 			common::logSetWorkingPath(arg.mid(2));
 
+		// Package name (e.g., "lib_ui" or "td_ui") for the modules aggregator
+		} else if (arg == "-p") {
+			if (++i == count) {
+				logError(kErrorInputPathExpected, "Command Line") << "package name expected after -p";
+				return Options();
+			} else {
+				result.packageName = args.at(i);
+			}
+		} else if (arg.startsWith("-p")) {
+			result.packageName = arg.mid(2);
+
 		// Render SVG mode
 		} else if (arg == "--render-svg") {
 			if (i + 2 >= count) {
