@@ -7,6 +7,7 @@
 #include "codegen/style/processor.h"
 
 #include <QtCore/QDir>
+#include <QtCore/QFile>
 #include <QtCore/QFileInfo>
 #include "codegen/common/cpp_file.h"
 #include "codegen/style/parsed_file.h"
@@ -41,13 +42,16 @@ int Processor::launch() {
 			return -1;
 		}
 	}
+	if (!writeAggregator()) {
+		return -1;
+	}
 	if (!common::TouchTimestamp(options_.timestampPath)) {
 		return -1;
 	}
 	return 0;
 }
 
-bool Processor::write(const structure::Module &module) const {
+bool Processor::write(const structure::Module &module) {
 	bool forceReGenerate = false;
 	QDir dir(options_.outputPath);
 	if (!dir.mkpath(".")) {
@@ -68,10 +72,75 @@ bool Processor::write(const structure::Module &module) const {
 	if (!generator.writeHeader()
 		|| !generator.writeSource()
 		|| !generator.writeMasksHeader()
-		|| !generator.writeMasksSource()) {
+		|| !generator.writeMasksSource()
+		|| !generator.writeNewHeader()
+		|| !generator.writeNewSource()) {
 		return false;
 	}
+	if (!options_.isPalette) {
+		moduleBaseNames_.push_back(destFileBaseName(module));
+	}
 	return true;
+}
+
+bool Processor::writeAggregator() const {
+	if (options_.packageName.isEmpty()) {
+		return true;
+	}
+
+	const auto &package = options_.packageName;
+	QDir dir(options_.outputPath);
+	const auto basePath = dir.absolutePath() + '/' + package + "_modules";
+
+	common::ProjectInfo project = {
+		"codegen_style",
+		QStringLiteral("modules aggregator"),
+		false
+	};
+
+	{
+		auto header = std::make_unique<common::CppFile>(
+			basePath + ".h",
+			project);
+		header->include("ui/style/style_runtime.h").newline();
+		header->pushNamespace("style").pushNamespace(package);
+		header->newline();
+		header->stream()
+			<< "void RegisterModules(style::Registry &registry);\n";
+		header->newline();
+		if (!header->finalize()) return false;
+	}
+
+	auto source = std::make_unique<common::CppFile>(
+		basePath + ".cpp",
+		project);
+	const auto kStylePrefix = QStringLiteral("style_");
+	for (const auto &base : moduleBaseNames_) {
+		const auto pureBase = base.startsWith(kStylePrefix)
+			? base.mid(kStylePrefix.size())
+			: base;
+		source->include("styles/" + pureBase + ".h");
+	}
+	source->newline();
+	source->pushNamespace("style").pushNamespace(package);
+	source->newline();
+	source->stream()
+		<< "void RegisterModules(style::Registry &registry) {\n";
+	if (moduleBaseNames_.isEmpty()) {
+		source->stream() << "\t(void)registry;\n";
+	} else {
+		source->stream() << "\tstatic const style::ModuleDescriptor *const kDescriptors[] = {\n";
+		for (const auto &base : moduleBaseNames_) {
+			source->stream()
+				<< "\t\t&::style::modules::" << base << "::Descriptor,\n";
+		}
+		source->stream() << "\t};\n";
+		source->stream()
+			<< "\tregistry.add(kDescriptors, "
+			<< moduleBaseNames_.size() << ");\n";
+	}
+	source->stream() << "}\n";
+	return source->finalize();
 }
 
 Processor::~Processor() = default;

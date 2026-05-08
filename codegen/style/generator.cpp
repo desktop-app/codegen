@@ -167,6 +167,21 @@ Generator::Generator(const structure::Module &module, const QString &destBasePat
 , isPalette_(isPalette) {
 }
 
+QString Generator::pureBaseName() const {
+	const auto prefix = QStringLiteral("style_");
+	return baseName_.startsWith(prefix) ? baseName_.mid(prefix.size()) : baseName_;
+}
+
+QString Generator::pxValueExpression(int value, bool useContextPx) const {
+	if (useContextPx) {
+		if (value == 0) {
+			return QStringLiteral("0");
+		}
+		return QString("context.px(%1)").arg(value);
+	}
+	return pxValueName(value);
+}
+
 bool Generator::writeHeader() {
 	header_ = std::make_unique<common::CppFile>(basePath_ + ".h", project_);
 
@@ -286,7 +301,8 @@ QString Generator::typeToDefaultValue(structure::Type type) const {
 // Empty result means an error.
 QString Generator::valueAssignmentCode(
 		structure::Value value,
-		bool ignoreCopy) const {
+		bool ignoreCopy,
+		bool useContextPx) const {
 	auto copy = value.copyOf();
 	if (!ignoreCopy && !copy.isEmpty()) {
 		return "st::" + copy.back();
@@ -297,7 +313,7 @@ QString Generator::valueAssignmentCode(
 	case Tag::Int: return QString("%1").arg(value.Int());
 	case Tag::Bool: return QString(value.Bool() ? "true" : "false");
 	case Tag::Double: return QString("%1").arg(value.Double());
-	case Tag::Pixels: return pxValueName(value.Int());
+	case Tag::Pixels: return pxValueExpression(value.Int(), useContextPx);
 	case Tag::String: return QString("QString::fromUtf8(%1)").arg(stringToEncodedString(value.String()));
 	case Tag::Color: {
 		auto v(value.Color());
@@ -312,28 +328,42 @@ QString Generator::valueAssignmentCode(
 	} break;
 	case Tag::Point: {
 		auto v(value.Point());
-		return QString("{ %1, %2 }").arg(pxValueName(v.x), pxValueName(v.y));
+		return QString("{ %1, %2 }").arg(
+			pxValueExpression(v.x, useContextPx),
+			pxValueExpression(v.y, useContextPx));
 	} break;
 	case Tag::Size: {
 		auto v(value.Size());
-		return QString("{ %1, %2 }").arg(pxValueName(v.width), pxValueName(v.height));
+		return QString("{ %1, %2 }").arg(
+			pxValueExpression(v.width, useContextPx),
+			pxValueExpression(v.height, useContextPx));
 	} break;
 	case Tag::Align: return QString("style::al_%1").arg(value.String().c_str());
 	case Tag::Margins: {
 		auto v(value.Margins());
-		return QString("{ %1, %2, %3, %4 }").arg(pxValueName(v.left), pxValueName(v.top), pxValueName(v.right), pxValueName(v.bottom));
+		return QString("{ %1, %2, %3, %4 }").arg(
+			pxValueExpression(v.left, useContextPx),
+			pxValueExpression(v.top, useContextPx),
+			pxValueExpression(v.right, useContextPx),
+			pxValueExpression(v.bottom, useContextPx));
 	} break;
 	case Tag::Font: {
 		auto v(value.Font());
 		QString family = "0";
 		if (!v.family.empty()) {
-			auto familyIndex = fontFamilies_.value(v.family, -1);
-			if (familyIndex < 0) {
-				return QString();
+			if (useContextPx) {
+				family = QString("style::internal::RegisterFontFamily(%1)")
+					.arg(stringToEncodedString(v.family));
+			} else {
+				auto familyIndex = fontFamilies_.value(v.family, -1);
+				if (familyIndex < 0) {
+					return QString();
+				}
+				family = QString("font%1index").arg(familyIndex);
 			}
-			family = QString("font%1index").arg(familyIndex);
 		}
-		return QString("{ %1, FontFlags::from_raw(%2), %3 }").arg(pxValueName(v.size)).arg(v.flags).arg(family);
+		return QString("{ %1, style::FontFlags::from_raw(%2), %3 }").arg(
+			pxValueExpression(v.size, useContextPx)).arg(v.flags).arg(family);
 	} break;
 	case Tag::Icon: {
 		auto v(value.Icon());
@@ -343,9 +373,9 @@ QString Generator::valueAssignmentCode(
 			if (maskIndex < 0) {
 				return QString();
 			}
-			auto color = valueAssignmentCode(part.color);
-			auto padding = valueAssignmentCode(part.padding);
-			parts.push_back(QString("MonoIcon{ &iconMask%1, %2, %3 }").arg(
+			auto color = valueAssignmentCode(part.color, false, useContextPx);
+			auto padding = valueAssignmentCode(part.padding, false, useContextPx);
+			parts.push_back(QString("style::internal::MonoIcon{ &iconMask%1, %2, %3 }").arg(
 				QString::number(maskIndex),
 				color,
 				padding));
@@ -357,7 +387,8 @@ QString Generator::valueAssignmentCode(
 
 		QStringList fields;
 		for (const auto &field : *value.Fields()) {
-			fields.push_back(valueAssignmentCode(field.variable.value));
+			fields.push_back(valueAssignmentCode(
+				field.variable.value, false, useContextPx));
 		}
 		return "{ " + fields.join(", ") + " }";
 	} break;
@@ -1359,6 +1390,181 @@ bool Generator::writeMasksSource() {
 			<< "(iconMask" << i.value() << "Data);\n";
 	}
 	source->newline();
+
+	return source->finalize();
+}
+
+bool Generator::writeNewHeader() {
+	if (isPalette_) {
+		return true;
+	}
+	const auto purebase = pureBaseName();
+	const auto headerPath = QFileInfo(basePath_).dir().absoluteFilePath(
+		purebase + ".h");
+	auto header = std::make_unique<common::CppFile>(headerPath, project_);
+	header->include("ui/style/style_runtime.h");
+	header->include("styles/" + baseName_ + ".h");
+	module_.enumIncludes([&](const Module &included) {
+		const auto info = QFileInfo(included.filepath());
+		if (info.suffix() == "palette") {
+			return true;
+		}
+		header->include("styles/" + info.baseName() + ".h");
+		return true;
+	});
+	header->newline();
+
+	header->pushNamespace("style::modules::" + baseName_).newline();
+	header->stream() << "struct Module {\n";
+	auto enumOk = module_.enumVariables([&](const Variable &variable) -> bool {
+		const auto type = typeToString(variable.value.type());
+		if (type.isEmpty()) return false;
+		header->stream() << "\t" << type << " " << variable.name.back() << ";\n";
+		return true;
+	});
+	if (!enumOk) return false;
+	header->stream() << "};\n\n";
+	header->stream() << "extern const style::ModuleDescriptor Descriptor;\n";
+	header->popNamespace().newline();
+
+	header->pushNamespace("sv").newline();
+	// Forward-declare every sv::struct first so per-field accessors (which
+	// return sv:: types of fields) can refer to types defined further down.
+	module_.enumStructs([&](const Struct &structValue) -> bool {
+		header->stream() << "struct " << structValue.name.back() << ";\n";
+		return true;
+	});
+	header->newline();
+	module_.enumStructs([&](const Struct &structValue) -> bool {
+		const auto name = structValue.name.back();
+		header->stream()
+			<< "struct " << name << " : value<style::" << name
+			<< "> {\n\tusing value::value;\n";
+		// For each struct-typed field, emit a sub-locator accessor:
+		// `child_field()` returns an sv::Child with the parent's module and
+		// the parent's offset advanced by `offsetof(parent, field)`. Same
+		// arithmetic works for the legacy bridge (where parent.offset is the
+		// address of an `st::*` global).
+		for (const auto &field : structValue.fields) {
+			if (field.type.tag != Tag::Struct) continue;
+			const auto fieldTypeName = field.type.name.back();
+			const auto fieldName = field.name.back();
+			header->stream()
+				<< "\t[[nodiscard]] " << fieldTypeName
+				<< " " << fieldName
+				<< "() const { return " << fieldTypeName
+				<< "(raw.module, raw.offset + offsetof(style::"
+				<< name << ", " << fieldName << ")); }\n";
+		}
+		header->stream() << "};\n";
+		return true;
+	});
+	header->newline();
+	enumOk = module_.enumVariables([&](const Variable &variable) -> bool {
+		if (variable.value.type().tag != Tag::Struct) return true;
+		const auto typeName = variable.value.type().name.back();
+		header->stream()
+			<< "extern const " << typeName << " "
+			<< variable.name.back() << ";\n";
+		return true;
+	});
+	if (!enumOk) return false;
+	header->popNamespace().newline();
+
+	header->pushNamespace("sp").newline();
+	module_.enumStructs([&](const Struct &structValue) -> bool {
+		const auto name = structValue.name.back();
+		header->stream()
+			<< "using " << name << " = pointer<sv::" << name << ">;\n";
+		return true;
+	});
+	header->popNamespace();
+
+	return header->finalize();
+}
+
+bool Generator::writeNewSource() {
+	if (isPalette_) {
+		return true;
+	}
+	const auto purebase = pureBaseName();
+	const auto sourcePath = QFileInfo(basePath_).dir().absoluteFilePath(
+		purebase + ".cpp");
+	auto source = std::make_unique<common::CppFile>(sourcePath, project_);
+	source->include("styles/" + baseName_ + "_masks.h");
+
+	// Include the transitive set of OLD style headers so the Build() body
+	// can reference st::* globals (palette colors, defaults from other files).
+	auto includes = QStringList();
+	std::function<bool(const Module&)> collector = [&](const Module &included) {
+		included.enumIncludes(collector);
+		const auto base = moduleBaseName(included);
+		if (!includes.contains(base)) {
+			includes.push_back(base);
+		}
+		return true;
+	};
+	module_.enumIncludes(collector);
+	for (const auto &base : includes) {
+		source->include("styles/" + base + ".h");
+	}
+	source->newline();
+
+	source->pushNamespace("style::modules::" + baseName_).newline();
+	source->pushNamespace().newline();
+
+	for (auto i = iconMasks_.cbegin(), e = iconMasks_.cend(); i != e; ++i) {
+		source->stream()
+			<< "using ::style::masks::" << baseName_
+			<< "::iconMask" << i.value() << ";\n";
+	}
+	if (!iconMasks_.isEmpty()) {
+		source->newline();
+	}
+
+	source->stream()
+		<< "std::shared_ptr<const void> Build(\n"
+		<< "\t\tconst style::BuildContext &context,\n"
+		<< "\t\tconst style::Modules &alreadyBuilt) {\n"
+		<< "\t(void)context;\n"
+		<< "\t(void)alreadyBuilt;\n"
+		<< "\tauto result = std::make_shared<Module>();\n";
+	const auto enumOk = module_.enumVariables([&](const Variable &variable) -> bool {
+		const auto value = valueAssignmentCode(
+			variable.value,
+			/*ignoreCopy=*/false,
+			/*useContextPx=*/true);
+		if (value.isEmpty()) return false;
+		source->stream()
+			<< "\tresult->" << variable.name.back()
+			<< " = " << value << ";\n";
+		return true;
+	});
+	if (!enumOk) return false;
+	source->stream() << "\treturn result;\n}\n";
+	source->popNamespace().newline();
+
+	source->stream()
+		<< "const style::ModuleDescriptor Descriptor = {\n"
+		<< "\t.name = \"" << baseName_ << "\",\n"
+		<< "\t.build = &Build,\n"
+		<< "};\n";
+	source->popNamespace().newline();
+
+	source->pushNamespace("sv").newline();
+	module_.enumVariables([&](const Variable &variable) -> bool {
+		if (variable.value.type().tag != Tag::Struct) return true;
+		const auto typeName = variable.value.type().name.back();
+		const auto varName = variable.name.back();
+		source->stream()
+			<< "const " << typeName << " " << varName << " = {\n"
+			<< "\t&style::modules::" << baseName_ << "::Descriptor,\n"
+			<< "\toffsetof(style::modules::" << baseName_
+			<< "::Module, " << varName << "),\n"
+			<< "};\n";
+		return true;
+	});
+	source->popNamespace();
 
 	return source->finalize();
 }

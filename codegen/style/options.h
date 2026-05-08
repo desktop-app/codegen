@@ -16,6 +16,7 @@ struct Options {
 	QStringList includePaths = { "." };
 	QString outputPath = ".";
 	QString timestampPath;
+	QString packageName;
 	QStringList inputPaths;
 	bool isPalette = false;
 
