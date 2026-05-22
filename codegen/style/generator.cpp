@@ -289,7 +289,7 @@ QString Generator::valueAssignmentCode(
 		bool ignoreCopy) const {
 	auto copy = value.copyOf();
 	if (!ignoreCopy && !copy.isEmpty()) {
-		return "st::" + copy.back();
+		return "st::" + copy.join('.');
 	}
 
 	switch (value.type().tag) {
