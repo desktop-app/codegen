@@ -11,12 +11,21 @@
 #include "codegen/common/cpp_file.h"
 #include "codegen/lang/parsed_file.h"
 #include "codegen/lang/generator.h"
+#include "codegen/lang/subsets.h"
 
 namespace codegen {
 namespace lang {
 namespace {
 
 constexpr int kErrorCantWritePath = 821;
+
+[[nodiscard]] common::ProjectInfo Project(const QString &inputPath) {
+	return {
+		"codegen_style",
+		QFileInfo(inputPath).fileName(),
+		false,
+	};
+}
 
 } // namespace
 
@@ -26,6 +35,13 @@ Processor::Processor(const Options &options)
 }
 
 int Processor::launch() {
+	if (options_.subsetsOnly) {
+		return WriteSubsets(
+			options_.outputPath,
+			options_.sourcesPath,
+			Project(options_.inputPath)) ? 0 : -1;
+	}
+
 	if (!parser_->read()) {
 		return -1;
 	}
@@ -38,24 +54,20 @@ int Processor::launch() {
 }
 
 bool Processor::write(const LangPack &langpack) const {
-	bool forceReGenerate = false;
 	QDir dir(options_.outputPath);
 	if (!dir.mkpath(".")) {
 		common::logError(kErrorCantWritePath, "Command Line") << "can not open path for writing: " << dir.absolutePath().toStdString();
 		return false;
 	}
 
-	QFileInfo srcFile(options_.inputPath);
 	QString dstFilePath = dir.absolutePath() + "/lang_auto";
 
-	common::ProjectInfo project = {
-		"codegen_style",
-		srcFile.fileName(),
-		forceReGenerate
-	};
+	const auto project = Project(options_.inputPath);
 
 	Generator generator(langpack, dstFilePath, project);
 	if (!generator.writeHeader()
+		|| !generator.writeCounts()
+		|| !generator.writeAllKeys()
 		|| !generator.writeSource()
 		|| !common::TouchTimestamp(dstFilePath)) {
 		return false;

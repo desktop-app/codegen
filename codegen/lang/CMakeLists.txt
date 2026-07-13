@@ -14,6 +14,8 @@ PRIVATE
     codegen/lang/parsed_file.h
     codegen/lang/processor.cpp
     codegen/lang/processor.h
+    codegen/lang/subsets.cpp
+    codegen/lang/subsets.h
 )
 
 target_include_directories(codegen_lang

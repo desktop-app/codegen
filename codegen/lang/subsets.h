@@ -7,22 +7,15 @@
 #pragma once
 
 #include <QtCore/QString>
-#include <QtCore/QStringList>
+#include "codegen/common/cpp_file.h"
 
 namespace codegen {
 namespace lang {
 
-struct Options {
-	QString outputPath = ".";
-	QString inputPath;
-
-	QString sourcesPath;
-
-	bool subsetsOnly = false;
-};
-
-// Parsing failed if inputPath is empty in the result.
-Options parseOptions();
+bool WriteSubsets(
+	const QString &genPath,
+	const QString &sourcesPath,
+	const common::ProjectInfo &project);
 
 } // namespace lang
 } // namespace codegen

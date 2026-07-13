@@ -9,39 +9,88 @@
 #include <memory>
 #include <functional>
 #include <QtCore/QDir>
+#include <QtCore/QFile>
 #include <QtCore/QSet>
+#include <QtCore/QTextStream>
 #include <QtGui/QImage>
 #include <QtGui/QPainter>
 
 namespace codegen {
 namespace lang {
-
 Generator::Generator(const LangPack &langpack, const QString &destBasePath, const common::ProjectInfo &project)
 : langpack_(langpack)
 , basePath_(destBasePath)
 , baseName_(QFileInfo(basePath_).baseName())
 , project_(project) {
+	collectDeclarations();
+}
+
+void Generator::collectDeclarations() {
+	auto index = 0;
+	for (auto &entry : langpack_.entries) {
+		const auto isPlural = !entry.keyBase.isEmpty();
+		const auto &key = entry.key;
+		if (!isPlural || key == ComputePluralKey(entry.keyBase, 0)) {
+			auto tags = QStringList();
+			for (auto &tagData : entry.tags) {
+				tags.push_back("lngtag_" + tagData.tag);
+			}
+			declarations_.push_back("inline constexpr phrase<"
+				+ tags.join(", ")
+				+ "> "
+				+ (isPlural ? entry.keyBase : key)
+				+ "{ ushort("
+				+ QString::number(index)
+				+ ") };");
+		}
+		++index;
+	}
 }
 
 bool Generator::writeHeader() {
 	header_ = std::make_unique<common::CppFile>(basePath_ + ".h", project_);
 	header_->include("lang/lang_tag.h").include("lang/lang_values.h").newline();
 
-	writeHeaderForwardDeclarations();
 	writeHeaderTagTypes();
 	writeHeaderInterface();
 	writeHeaderReactiveInterface();
+	writeHeaderKeysInclude();
 
 	return header_->finalize();
 }
 
-void Generator::writeHeaderForwardDeclarations() {
-	header_->pushNamespace("Lang").stream() << "\
+void Generator::writeHeaderKeysInclude() {
+	header_->stream() << "\
+#ifdef LANG_KEYS_SUBSET\n\
+#include LANG_KEYS_SUBSET\n\
+#else // LANG_KEYS_SUBSET\n\
+#include \"" << baseName_ << "_keys.h\"\n\
+#endif // LANG_KEYS_SUBSET\n";
+}
+
+bool Generator::writeCounts() {
+	auto file = common::CppFile(basePath_ + "_counts.h", project_);
+	file.pushNamespace("Lang").stream() << "\
 \n\
 inline constexpr auto kTagsCount = ushort(" << langpack_.tags.size() << ");\n\
 inline constexpr auto kKeysCount = ushort(" << langpack_.entries.size() << ");\n\
 \n";
-	header_->popNamespace().newline();
+	file.popNamespace();
+	return file.finalize();
+}
+
+bool Generator::writeAllKeys() {
+	auto file = common::CppFile(basePath_ + "_keys.h", project_);
+	file.include(baseName_ + ".h").newline();
+	file.pushNamespace("tr").newline();
+	for (const auto &[combination, code] : specializations_) {
+		file.stream() << code;
+	}
+	for (const auto &declaration : declarations_) {
+		file.stream() << declaration << "\n";
+	}
+	file.newline().popNamespace();
+	return file.finalize();
 }
 
 void Generator::writeHeaderTagTypes() {
@@ -98,7 +147,6 @@ void Generator::writeHeaderReactiveInterface() {
 	header_->pushNamespace("tr");
 
 	writeHeaderProducersInterface();
-	writeHeaderProducersInstances();
 
 	header_->popNamespace().newline();
 }
@@ -132,7 +180,7 @@ using S = std::decay_t<decltype(std::declval<P>()(QString()))>;\n\
 template <typename ...Tags>\n\
 struct phrase;\n\
 \n";
-	std::set<QString> producersDeclared;
+	auto specializations = std::map<QString, QString>();
 	for (auto &entry : langpack_.entries) {
 		const auto isPlural = !entry.keyBase.isEmpty();
 		auto tags = QStringList();
@@ -160,51 +208,42 @@ struct phrase;\n\
 		}
 		producerArgs.push_back("P p = P()");
 		currentArgs.push_back("P p = P()");
-		if (!producersDeclared.emplace(tags.join(',')).second) {
+		const auto combination = tags.join(',');
+		if (specializations.find(combination) != specializations.end()) {
 			continue;
 		}
-		header_->stream() << "\
+		specializations.emplace(combination, "\
 template <>\n\
-struct phrase<" << tags.join(", ") << "> {\n\
+struct phrase<" + tags.join(", ") + "> {\n\
 	template <typename P = details::Identity>\n\
-	rpl::producer<S<P>> operator()(" << producerArgs.join(", ") << ") const {\n\
-		return ::Lang::details::Producer<" << tags.join(", ") << ">::Combine(" << values.join(", ") << ");\n\
+	rpl::producer<S<P>> operator()(" + producerArgs.join(", ") + ") const {\n\
+		return ::Lang::details::Producer<" + tags.join(", ") + ">::Combine(" + values.join(", ") + ");\n\
 	}\n\
 \n\
 	template <typename P = details::Identity>\n\
-	S<P> operator()(now_t, " << currentArgs.join(", ") << ") const {\n\
-		return ::Lang::details::Producer<" << tags.join(", ") << ">::Current(" << values.join(", ") << ");\n\
+	S<P> operator()(now_t, " + currentArgs.join(", ") + ") const {\n\
+		return ::Lang::details::Producer<" + tags.join(", ") + ">::Current(" + values.join(", ") + ");\n\
 	}\n\
 \n\
 	ushort base;\n\
 };\n\
-\n";
+\n");
 	}
-}
-
-void Generator::writeHeaderProducersInstances() {
-	auto index = 0;
-	for (auto &entry : langpack_.entries) {
-		const auto isPlural = !entry.keyBase.isEmpty();
-		const auto &key = entry.key;
-		auto tags = QStringList();
-		for (auto &tagData : entry.tags) {
-			const auto &tag = tagData.tag;
-			tags.push_back("lngtag_" + tag);
-		}
-		if (!isPlural || key == ComputePluralKey(entry.keyBase, 0)) {
-			header_->stream() << "\
-inline constexpr phrase<" << tags.join(", ") << "> " << (isPlural ? entry.keyBase : key) << "{ ushort(" << index << ") };\n";
-		}
-		++index;
+	const auto plain = specializations.find(QString());
+	if (plain != specializations.end()) {
+		header_->stream() << plain->second;
+		specializations.erase(plain);
 	}
-	header_->newline();
+	specializations_ = std::move(specializations);
 }
 
 bool Generator::writeSource() {
 	source_ = std::make_unique<common::CppFile>(basePath_ + ".cpp", project_);
 
-	source_->include("lang/lang_keys.h").pushNamespace("Lang").pushNamespace();
+	source_->include("lang/lang_keys.h")
+		.include(baseName_ + "_counts.h")
+		.pushNamespace("Lang")
+		.pushNamespace();
 
 	source_->stream() << "\
 QChar DefaultData[] = {";

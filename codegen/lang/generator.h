@@ -25,16 +25,21 @@ public:
 	Generator &operator=(const Generator &other) = delete;
 
 	bool writeHeader();
+
+	bool writeCounts();
+	bool writeAllKeys();
+
 	bool writeSource();
 
 private:
-	void writeHeaderForwardDeclarations();
+	void collectDeclarations();
+
 	void writeHeaderTagTypes();
 	void writeHeaderInterface();
 	void writeHeaderTagValueLookup();
 	void writeHeaderReactiveInterface();
 	void writeHeaderProducersInterface();
-	void writeHeaderProducersInstances();
+	void writeHeaderKeysInclude();
 
 	QString getFullKey(const LangPack::Entry &entry);
 
@@ -45,6 +50,10 @@ private:
 	QString basePath_, baseName_;
 	const common::ProjectInfo &project_;
 	std::unique_ptr<common::CppFile> source_, header_;
+
+	std::vector<QString> declarations_;
+
+	std::map<QString, QString> specializations_;
 
 };
 

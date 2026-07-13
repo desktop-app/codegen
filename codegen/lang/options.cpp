@@ -19,6 +19,7 @@ constexpr int kErrorOutputPathExpected      = 902;
 constexpr int kErrorInputPathExpected       = 903;
 constexpr int kErrorSingleInputPathExpected = 904;
 constexpr int kErrorWorkingPathExpected     = 905;
+constexpr int kErrorSourcesPathExpected     = 906;
 
 } // namespace
 
@@ -51,6 +52,21 @@ Options parseOptions() {
 			}
 		} else if (arg.startsWith("-w")) {
 			common::logSetWorkingPath(arg.mid(2));
+
+		// Sources path
+		} else if (arg == "-s") {
+			if (++i == count) {
+				logError(kErrorSourcesPathExpected, "Command Line") << "sources path expected after -s";
+				return Options();
+			} else {
+				result.sourcesPath = args.at(i);
+			}
+		} else if (arg.startsWith("-s")) {
+			result.sourcesPath = arg.mid(2);
+
+		// Subsets only
+		} else if (arg == "--subsets-only") {
+			result.subsetsOnly = true;
 
 		// Input path
 		} else {
