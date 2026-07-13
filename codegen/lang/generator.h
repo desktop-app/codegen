@@ -32,6 +32,8 @@ public:
 	bool writeSource();
 
 private:
+	void allocateIndices();
+	void saveTagOrder();
 	void collectDeclarations();
 
 	void writeHeaderTagTypes();
@@ -50,6 +52,10 @@ private:
 	QString basePath_, baseName_;
 	const common::ProjectInfo &project_;
 	std::unique_ptr<common::CppFile> source_, header_;
+
+	std::vector<int> indices_;
+	int keysCount_ = 0;
+	bool failed_ = false;
 
 	std::vector<QString> declarations_;
 

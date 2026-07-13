@@ -92,6 +92,8 @@ private:
 	QString extractTagsData(const QString &value, LangPack *to);
 	QString extractTagData(const QString &tag, LangPack *to);
 
+	void loadTagOrder();
+
 	void fillPluralTags();
 
 	QString filePath_;

@@ -6,6 +6,8 @@
 //
 #include "codegen/lang/generator.h"
 
+#include <algorithm>
+#include <limits>
 #include <memory>
 #include <functional>
 #include <QtCore/QDir>
@@ -17,37 +19,139 @@
 
 namespace codegen {
 namespace lang {
+namespace {
+
+constexpr int kErrorTooManyKeys = 841;
+constexpr int kErrorTooManyTags = 842;
+
+constexpr auto kIndexLimit = std::numeric_limits<ushort>::max();
+
+struct Slot {
+	int start = 0;
+	int size = 0;
+};
+
+} // namespace
+
 Generator::Generator(const LangPack &langpack, const QString &destBasePath, const common::ProjectInfo &project)
 : langpack_(langpack)
 , basePath_(destBasePath)
 , baseName_(QFileInfo(basePath_).baseName())
 , project_(project) {
+	allocateIndices();
+	saveTagOrder();
 	collectDeclarations();
 }
 
+void Generator::saveTagOrder() {
+	auto file = QFile(basePath_ + ".tags");
+	if (file.open(QIODevice::WriteOnly)) {
+		auto stream = QTextStream(&file);
+		for (const auto &tag : langpack_.tags) {
+			stream << tag.tag << '\n';
+		}
+	}
+}
+
+void Generator::allocateIndices() {
+	const auto path = basePath_ + ".indices";
+	auto known = std::map<QString, Slot>();
+	auto next = 0;
+
+	auto reading = QFile(path);
+	if (reading.open(QIODevice::ReadOnly)) {
+		auto stream = QTextStream(&reading);
+		while (!stream.atEnd()) {
+			const auto parts = stream.readLine().split('\t');
+			if (parts.size() != 3) {
+				continue;
+			}
+			const auto start = parts[1].toInt();
+			const auto size = parts[2].toInt();
+			if (size <= 0 || start < 0) {
+				continue;
+			}
+			known.emplace(parts[0], Slot{ start, size });
+			next = std::max(next, start + size);
+		}
+		reading.close();
+	}
+
+	indices_.assign(langpack_.entries.size(), -1);
+	for (auto i = 0, count = int(langpack_.entries.size()); i != count; ++i) {
+		const auto &entry = langpack_.entries[i];
+		const auto isPlural = !entry.keyBase.isEmpty();
+		if (isPlural && entry.key != ComputePluralKey(entry.keyBase, 0)) {
+			continue; // Taken by the first part of the plural group.
+		}
+		const auto name = isPlural ? entry.keyBase : entry.key;
+		const auto size = isPlural ? kPluralPartCount : 1;
+		auto j = known.find(name);
+		if (j == known.end() || j->second.size != size) {
+			j = known.insert_or_assign(name, Slot{ next, size }).first;
+			next += size;
+		}
+		for (auto shift = 0; shift != size; ++shift) {
+			indices_[i + shift] = j->second.start + shift;
+		}
+	}
+	keysCount_ = next;
+	if (keysCount_ > kIndexLimit) {
+		common::logError(kErrorTooManyKeys, path)
+			<< "the key table needs " << keysCount_
+			<< " slots, the limit is " << kIndexLimit
+			<< ". Removed keys keep their slot so that re-adding one is free; "
+			<< "delete this file to renumber the keys from scratch.";
+		failed_ = true;
+		return;
+	}
+
+	auto writing = QFile(path);
+	if (writing.open(QIODevice::WriteOnly)) {
+		auto stream = QTextStream(&writing);
+		for (const auto &[name, slot] : known) {
+			stream << name << '\t' << slot.start << '\t' << slot.size << '\n';
+		}
+	}
+}
+
 void Generator::collectDeclarations() {
-	auto index = 0;
-	for (auto &entry : langpack_.entries) {
+	auto byIndex = std::map<int, QString>();
+	for (auto i = 0, count = int(langpack_.entries.size()); i != count; ++i) {
+		const auto &entry = langpack_.entries[i];
 		const auto isPlural = !entry.keyBase.isEmpty();
 		const auto &key = entry.key;
-		if (!isPlural || key == ComputePluralKey(entry.keyBase, 0)) {
-			auto tags = QStringList();
-			for (auto &tagData : entry.tags) {
-				tags.push_back("lngtag_" + tagData.tag);
-			}
-			declarations_.push_back("inline constexpr phrase<"
-				+ tags.join(", ")
-				+ "> "
-				+ (isPlural ? entry.keyBase : key)
-				+ "{ ushort("
-				+ QString::number(index)
-				+ ") };");
+		if (isPlural && key != ComputePluralKey(entry.keyBase, 0)) {
+			continue;
 		}
-		++index;
+		auto tags = QStringList();
+		for (auto &tagData : entry.tags) {
+			tags.push_back("lngtag_" + tagData.tag);
+		}
+		byIndex.emplace(indices_[i], "inline constexpr phrase<"
+			+ tags.join(", ")
+			+ "> "
+			+ (isPlural ? entry.keyBase : key)
+			+ "{ ushort("
+			+ QString::number(indices_[i])
+			+ ") };");
+	}
+	declarations_.reserve(byIndex.size());
+	for (auto &[index, declaration] : byIndex) {
+		declarations_.push_back(declaration);
 	}
 }
 
 bool Generator::writeHeader() {
+	if (failed_) {
+		return false;
+	} else if (int(langpack_.tags.size()) > kIndexLimit) {
+		common::logError(kErrorTooManyTags, basePath_ + ".tags")
+			<< "there are " << langpack_.tags.size()
+			<< " tags, the limit is " << kIndexLimit
+			<< ". Delete this file to drop the tags that are not used anymore.";
+		return false;
+	}
 	header_ = std::make_unique<common::CppFile>(basePath_ + ".h", project_);
 	header_->include("lang/lang_tag.h").include("lang/lang_values.h").newline();
 
@@ -73,7 +177,7 @@ bool Generator::writeCounts() {
 	file.pushNamespace("Lang").stream() << "\
 \n\
 inline constexpr auto kTagsCount = ushort(" << langpack_.tags.size() << ");\n\
-inline constexpr auto kKeysCount = ushort(" << langpack_.entries.size() << ");\n\
+inline constexpr auto kKeysCount = ushort(" << keysCount_ << ");\n\
 \n";
 	file.popNamespace();
 	return file.finalize();
@@ -245,12 +349,20 @@ bool Generator::writeSource() {
 		.pushNamespace("Lang")
 		.pushNamespace();
 
+	auto byIndex = std::vector<const LangPack::Entry*>(keysCount_, nullptr);
+	for (auto i = 0, count = int(langpack_.entries.size()); i != count; ++i) {
+		byIndex[indices_[i]] = &langpack_.entries[i];
+	}
+
 	source_->stream() << "\
 QChar DefaultData[] = {";
 	auto count = 0;
 	auto fulllength = 0;
-	for (auto &entry : langpack_.entries) {
-		for (auto ch : entry.value) {
+	for (const auto entry : byIndex) {
+		if (!entry) {
+			continue;
+		}
+		for (auto ch : entry->value) {
 			if (fulllength > 0) source_->stream() << ",";
 			if (!count++) {
 				source_->stream() << "\n";
@@ -269,8 +381,9 @@ QChar DefaultData[] = {";
 int Offsets[] = {";
 	count = 0;
 	auto offset = 0;
-	auto writeOffset = [this, &count, &offset] {
-		if (offset > 0) source_->stream() << ",";
+	auto written = 0;
+	auto writeOffset = [this, &count, &offset, &written] {
+		if (written++ > 0) source_->stream() << ",";
 		if (!count++) {
 			source_->stream() << "\n";
 		} else {
@@ -281,9 +394,9 @@ int Offsets[] = {";
 		}
 		source_->stream() << offset;
 	};
-	for (auto &entry : langpack_.entries) {
+	for (const auto entry : byIndex) {
 		writeOffset();
-		offset += entry.value.size();
+		offset += entry ? entry->value.size() : 0;
 	}
 	writeOffset();
 	source_->stream() << " };\n";
@@ -309,10 +422,11 @@ ushort GetKeyIndex(QLatin1String key) {\n\
 	auto size = key.size();\n\
 	auto data = key.data();\n";
 
-	auto index = 0;
 	auto indices = std::map<QString, QString>();
-	for (auto &entry : langpack_.entries) {
-		indices.emplace(getFullKey(entry), QString::number(index++));
+	for (auto i = 0, total = int(langpack_.entries.size()); i != total; ++i) {
+		indices.emplace(
+			getFullKey(langpack_.entries[i]),
+			QString::number(indices_[i]));
 	}
 	const auto indexOfKey = [&](const QString &full) {
 		const auto i = indices.find(full);
