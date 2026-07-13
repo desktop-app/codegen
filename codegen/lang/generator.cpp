@@ -349,13 +349,18 @@ bool Generator::writeSource() {
 		.pushNamespace("Lang")
 		.pushNamespace();
 
+	source_->stream() << "\
+static_assert(sizeof(QChar) == sizeof(char16_t));\n\
+static_assert(alignof(QChar) == alignof(char16_t));\n\
+\n";
+
 	auto byIndex = std::vector<const LangPack::Entry*>(keysCount_, nullptr);
 	for (auto i = 0, count = int(langpack_.entries.size()); i != count; ++i) {
 		byIndex[indices_[i]] = &langpack_.entries[i];
 	}
 
 	source_->stream() << "\
-QChar DefaultData[] = {";
+const char16_t DefaultData[] = {";
 	auto count = 0;
 	auto fulllength = 0;
 	for (const auto entry : byIndex) {
@@ -372,7 +377,7 @@ QChar DefaultData[] = {";
 				}
 				source_->stream() << " ";
 			}
-			source_->stream() << "QChar(0x" << QString::number(ch.unicode(), 16) << ")";
+			source_->stream() << "0x" << QString::number(ch.unicode(), 16);
 			++fulllength;
 		}
 	}
@@ -507,7 +512,9 @@ QString GetOriginalValue(ushort key) {\n\
 	Expects(key < kKeysCount);\n\
 \n\
 	const auto offset = Offsets[key];\n\
-	return QString::fromRawData(DefaultData + offset, Offsets[key + 1] - offset);\n\
+	return QString::fromRawData(\n\
+		reinterpret_cast<const QChar*>(DefaultData + offset),\n\
+		Offsets[key + 1] - offset);\n\
 }\n\
 \n";
 
