@@ -11,6 +11,7 @@
 #include <QtCore/QMap>
 #include <QtCore/QDir>
 #include <QtCore/QRegularExpression>
+#include <QtCore/QTextStream>
 #include "codegen/common/basic_tokenized_file.h"
 #include "codegen/common/logging.h"
 #include "base/qt/qt_string_view.h"
