@@ -1056,6 +1056,27 @@ QByteArray iconMaskValueSize(int width, int height) {
 	return result;
 }
 
+[[nodiscard]] QString iconMaskSvgPath(const QString &filepath) {
+	if (filepath.startsWith("size://")) {
+		return QString();
+	}
+	const auto fileInfo = QFileInfo(filepath);
+	const auto path = fileInfo.dir().absoluteFilePath(
+		fileInfo.fileName().split('-')[0] + ".svg");
+	return QFileInfo(path).exists() ? path : QString();
+}
+
+[[nodiscard]] QSize iconMaskSizeModifier(const QString &filepath) {
+	auto result = QSize();
+	const auto modifiers = QFileInfo(filepath).fileName().split('-').mid(1);
+	for (const auto &modifierName : modifiers) {
+		if (const auto size = GetSizeModifier(modifierName)) {
+			result = *size;
+		}
+	}
+	return result;
+}
+
 QByteArray iconMaskValueSvg(QString filepath) {
 	QFileInfo fileInfo(filepath);
 	auto directory = fileInfo.dir();
@@ -1075,14 +1096,11 @@ QByteArray iconMaskValueSvg(QString filepath) {
 		common::logError(common::kErrorFileNotOpened, path) << "invalid svg data";
 		return {};
 	}
-	auto size = QSize();
 	for (const auto &modifierName : modifiers) {
 		if (const auto modifier = GetModifier(modifierName)) {
 			common::logError(common::kErrorInternal, filepath) << "modifiers not supported for svg yet";
 			return {};
-		} else if (const auto sizeOverride = GetSizeModifier(modifierName)) {
-			size = *sizeOverride;
-		} else {
+		} else if (!GetSizeModifier(modifierName)) {
 			common::logError(common::kErrorInternal, filepath) << "modifier should be valid here, name: " << modifierName.toStdString();
 			return {};
 		}
@@ -1090,18 +1108,8 @@ QByteArray iconMaskValueSvg(QString filepath) {
 
 	QByteArray result;
 	QLatin1String svgTag("SVG:");
-	QLatin1String sizeTag("SIZE:");
-	result.reserve(svgTag.size()
-		+ (size.isEmpty() ? 0 : (sizeTag.size() + 8))
-		+ bytes.size());
+	result.reserve(svgTag.size() + bytes.size());
 	result.append(svgTag.data(), svgTag.size());
-	if (!size.isEmpty()) {
-		result.append(sizeTag.data(), sizeTag.size());
-
-		QDataStream stream(&result, QIODevice::Append);
-		stream.setVersion(QDataStream::Qt_5_1);
-		stream << qint32(size.width()) << qint32(size.height());
-	}
 	result.append(bytes);
 	return result;
 }
@@ -1188,18 +1196,23 @@ bool Generator::writeIconValues() {
 		return true;
 	}
 
+	// Size variants of one svg share a single embedded copy.
+	auto svgDataOwners = QMap<QString, int>();
 	for (auto i = iconMasks_.cbegin(), e = iconMasks_.cend(); i != e; ++i) {
-		QString filePath = i.key();
-		QByteArray maskData;
-		QFileInfo fileInfo(filePath);
+		const auto filePath = i.key();
+		auto maskData = QByteArray();
 		if (filePath.startsWith("size://")) {
-			QStringList dimensions = filePath.mid(7).split(',');
+			const auto dimensions = filePath.mid(7).split(',');
 			if (dimensions.size() < 2 || dimensions.at(0).toInt() <= 0 || dimensions.at(1).toInt() <= 0) {
 				common::logError(common::kErrorFileNotOpened, filePath) << "bad dimensions";
 				return false;
 			}
 			maskData = iconMaskValueSize(dimensions.at(0).toInt(), dimensions.at(1).toInt());
-		} else if (QFileInfo(fileInfo.dir().absoluteFilePath(fileInfo.fileName().split('-')[0] + ".svg")).exists()) {
+		} else if (const auto svgPath = iconMaskSvgPath(filePath); !svgPath.isEmpty()) {
+			if (svgDataOwners.contains(svgPath)) {
+				continue;
+			}
+			svgDataOwners.insert(svgPath, i.value());
 			maskData = iconMaskValueSvg(filePath);
 		} else {
 			maskData = iconMaskValuePng(filePath);
@@ -1207,9 +1220,21 @@ bool Generator::writeIconValues() {
 		if (maskData.isEmpty()) {
 			return false;
 		}
-		source_->stream() << "const uchar iconMask" << i.value() << "Data[] = " << stringToBinaryArray(std::string(maskData.constData(), maskData.size())) << ";\n";
-		source_->stream() << "IconMask iconMask" << i.value() << "(iconMask" << i.value() << "Data);\n\n";
+		source_->stream() << "const uchar iconMask" << i.value() << "Data[] = " << stringToBinaryArray(std::string(maskData.constData(), maskData.size())) << ";\n\n";
 	}
+	for (auto i = iconMasks_.cbegin(), e = iconMasks_.cend(); i != e; ++i) {
+		const auto filePath = i.key();
+		auto dataIndex = i.value();
+		auto sizeArgument = QString();
+		if (const auto svgPath = iconMaskSvgPath(filePath); !svgPath.isEmpty()) {
+			dataIndex = svgDataOwners.value(svgPath, dataIndex);
+			if (const auto size = iconMaskSizeModifier(filePath); !size.isEmpty()) {
+				sizeArgument = QString(", { %1, %2 }").arg(size.width()).arg(size.height());
+			}
+		}
+		source_->stream() << "IconMask iconMask" << i.value() << "(iconMask" << dataIndex << "Data" << sizeArgument << ");\n";
+	}
+	source_->stream() << "\n";
 	return true;
 }
 
