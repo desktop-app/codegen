@@ -605,7 +605,7 @@ void Generator::writeSetSearch(const std::set<QString, std::greater<>> &set, Com
 
 			auto keyChar = name[checking];
 			auto usedIfForCheckCount = 0;
-			auto minimalLengthCheck = countMinimalLength(i, e, checking);
+			auto minimalLengthCheck = int(countMinimalLength(i, e, checking));
 			for (; checking + usedIfForCheckCount != name.size(); ++usedIfForCheckCount) {
 				if (!canUseIfForCheck(i, e, checking + usedIfForCheckCount)
 					|| countMinimalLength(i, e, checking + usedIfForCheckCount) != minimalLengthCheck) {
@@ -616,7 +616,7 @@ void Generator::writeSetSearch(const std::set<QString, std::greater<>> &set, Com
 			const auto checkedLength = checkLengthHistory.isEmpty()
 				? 0
 				: checkLengthHistory.back();
-			const auto requiredLength = qMax(
+			const auto requiredLength = std::max(
 				minimalLengthCheck,
 				checkedLength);
 			auto checkLengthCondition = QString();
