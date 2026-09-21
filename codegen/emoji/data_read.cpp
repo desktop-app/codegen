@@ -6,11 +6,13 @@
 //
 #include "codegen/emoji/data_read.h"
 
+#include "base/qt/qt_string_view.h"
 #include "codegen/emoji/data.h"
 #include "codegen/emoji/data_old.h"
-#include "base/qt/qt_string_view.h"
 
 #include <QFile>
+#include <QStringList>
+#include <optional>
 
 namespace codegen {
 namespace emoji {
@@ -21,29 +23,38 @@ using Part = std::vector<Line>;
 using Section = std::vector<Part>;
 using File = std::vector<Section>;
 
+template <typename Value>
+using ReadResult = std::pair<std::optional<Value>, QStringView>;
+
 [[nodiscard]] QStringView Skip(QStringView data, int endIndex) {
 	return (endIndex >= 0) ? base::StringViewMid(data, endIndex + 1) : QStringView();
 }
 
-[[nodiscard]] std::pair<QString, QStringView> ReadString(QStringView data) {
+[[nodiscard]] ReadResult<QString> ReadString(QStringView data) {
 	const auto endIndex = data.indexOf(',');
 	auto parse = base::StringViewMid(data, 0, endIndex);
 	const auto start = parse.indexOf('"');
 	const auto end = parse.indexOf('"', start + 1);
+	if (start >= 0
+		&& (end < 0 || parse.indexOf('"', end + 1) >= 0)) {
+		return { std::nullopt, parse };
+	}
 	auto result = (start >= 0 && end > start)
 		? base::StringViewMid(parse, start + 1, end - start - 1).toString()
 		: QString();
 	return { std::move(result), Skip(data, endIndex) };
 }
 
-[[nodiscard]] std::pair<Line, QStringView> ReadLine(QStringView data) {
+[[nodiscard]] ReadResult<Line> ReadLine(QStringView data) {
 	const auto endIndex = data.indexOf('\n');
 	auto parse = base::StringViewMid(data, 0, endIndex);
 	auto result = Line();
 	while (true) {
 		auto [string, updated] = ReadString(parse);
-		if (!string.isEmpty()) {
-			result.push_back(std::move(string));
+		if (!string) {
+			return { std::nullopt, updated };
+		} else if (!string->isEmpty()) {
+			result.push_back(std::move(*string));
 		}
 		if (updated.isEmpty()) {
 			break;
@@ -53,7 +64,7 @@ using File = std::vector<Section>;
 	return { std::move(result), Skip(data, endIndex) };
 }
 
-[[nodiscard]] std::pair<Part, QStringView> ReadPart(QStringView data) {
+[[nodiscard]] ReadResult<Part> ReadPart(QStringView data) {
 	const auto endIndex1 = data.indexOf(u"\n\n");
 	const auto endIndex2 = data.indexOf(u"\r\n\r\n");
 	const auto endIndex = (endIndex1 >= 0) ? endIndex1 : endIndex2;
@@ -61,8 +72,10 @@ using File = std::vector<Section>;
 	auto result = Part();
 	while (true) {
 		auto [line, updated] = ReadLine(parse);
-		if (!line.empty()) {
-			result.push_back(std::move(line));
+		if (!line) {
+			return { std::nullopt, updated };
+		} else if (!line->empty()) {
+			result.push_back(std::move(*line));
 		}
 		if (updated.isEmpty()) {
 			break;
@@ -72,7 +85,7 @@ using File = std::vector<Section>;
 	return { std::move(result), Skip(data, endIndex) };
 }
 
-[[nodiscard]] std::pair<Section, QStringView> ReadSection(QStringView data) {
+[[nodiscard]] ReadResult<Section> ReadSection(QStringView data) {
 	const auto endIndex1 = data.indexOf(u"--------");
 	const auto endIndex2 = data.indexOf(u"========");
 	const auto endIndex = (endIndex1 >= 0 && endIndex2 >= 0)
@@ -82,8 +95,10 @@ using File = std::vector<Section>;
 	auto result = Section();
 	while (true) {
 		auto [part, updated] = ReadPart(parse);
-		if (!part.empty()) {
-			result.push_back(std::move(part));
+		if (!part) {
+			return { std::nullopt, updated };
+		} else if (!part->empty()) {
+			result.push_back(std::move(*part));
 		}
 		if (updated.isEmpty()) {
 			break;
@@ -93,7 +108,7 @@ using File = std::vector<Section>;
 	return { std::move(result), Skip(data, endIndex) };
 }
 
-[[nodiscard]] File ReadFile(const QString &path) {
+[[nodiscard]] std::optional<File> ReadFile(const QString &path) {
 	auto file = QFile(path);
 	if (!file.open(QIODevice::ReadOnly)) {
 		return File();
@@ -105,8 +120,18 @@ using File = std::vector<Section>;
 	auto result = File();
 	while (true) {
 		auto [section, updated] = ReadSection(parse);
-		if (!section.empty()) {
-			result.push_back(std::move(section));
+		if (!section) {
+			const auto line = base::StringViewMid(
+				QStringView(bytes),
+				0,
+				updated.data() - bytes.constData()).count(QChar('\n')) + 1;
+			logDataError()
+				<< path.toStdString() << ':' << line
+				<< ": expected one quoted emoji per comma-separated entry: "
+				<< updated.toString().toStdString();
+			return std::nullopt;
+		} else if (!section->empty()) {
+			result.push_back(std::move(*section));
 		}
 		if (updated.isEmpty()) {
 			break;
@@ -114,6 +139,46 @@ using File = std::vector<Section>;
 		parse = updated;
 	}
 	return result;
+}
+
+[[nodiscard]] bool HasColorModifier(const QString &emoji) {
+	for (const auto code : emoji.toUcs4()) {
+		if (code >= 0x1F3FB && code <= 0x1F3FF) {
+			return true;
+		}
+	}
+	return false;
+}
+
+[[nodiscard]] QString EmojiCodepoints(const QString &emoji) {
+	auto result = QStringList();
+	for (const auto code : emoji.toUcs4()) {
+		result.push_back("U+" + QString::number(code, 16).toUpper());
+	}
+	return result.join(' ');
+}
+
+[[nodiscard]] bool CheckSectionReplacement(
+		const Part &section,
+		const Part &replacement) {
+	auto present = std::set<QString>();
+	for (const auto &line : replacement) {
+		present.insert(line.begin(), line.end());
+	}
+	auto valid = true;
+	for (const auto &line : section) {
+		for (const auto &string : line) {
+			if (!HasColorModifier(string) && !present.contains(string)) {
+				logDataError()
+					<< "Emoji missing from non-colored replacement for section "
+					<< section.front().front().toStdString() << ": "
+					<< string.toStdString() << " ("
+					<< EmojiCodepoints(string).toStdString() << ')';
+				valid = false;
+			}
+		}
+	}
+	return valid;
 }
 
 [[nodiscard]] const Line &FindColoredLine(const File &file, const QString &colored) {
@@ -191,7 +256,11 @@ QString InputIdToString(const InputId &id) {
 }
 
 InputData ReadData(const QString &path) {
-	const auto file = ReadFile(path);
+	const auto parsed = ReadFile(path);
+	if (!parsed) {
+		return InputData();
+	}
+	const auto &file = *parsed;
 	if (file.size() < 3
 		|| file[0].size() != 8
 		|| file[1].size() > 8) {
@@ -236,6 +305,7 @@ InputData ReadData(const QString &path) {
 	}
 	auto index = 0;
 	auto replacementsUsed = 0;
+	auto replacementsValid = true;
 	for (const auto &section : file[0]) {
 		const auto first = section.front().front();
 		const auto replacedSection = [&]() -> const Part* {
@@ -247,6 +317,10 @@ InputData ReadData(const QString &path) {
 			}
 			return nullptr;
 		}();
+		if (replacedSection
+			&& !CheckSectionReplacement(section, *replacedSection)) {
+			replacementsValid = false;
+		}
 		const auto &sectionData = replacedSection
 			? *replacedSection
 			: section;
@@ -265,6 +339,9 @@ InputData ReadData(const QString &path) {
 	}
 	if (replacementsUsed != file[1].size()) {
 		logDataError() << "Could not use some non-colored section replacements!";
+		return InputData();
+	}
+	if (!replacementsValid) {
 		return InputData();
 	}
 	if (file.size() > 3) {
