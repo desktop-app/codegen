@@ -181,13 +181,14 @@ constexpr auto kEmojiSize = 72;
 constexpr auto kEmojiFontSize = 72;
 constexpr auto kEmojiShiftTop = 67 - 4;
 constexpr auto kScaleFromLarge = true;
-constexpr auto kLargeEmojiSize = 180;
+constexpr auto kLargeEmojiSize = 181;
+constexpr auto kLargeEmojiSizeAndroid = 209;
 constexpr auto kLargeEmojiFontSizeMac = 180;
 constexpr auto kLargeEmojiShiftTopMac = 167 - 9;
 constexpr auto kEmojiShiftLeftMac = 0;
 constexpr auto kLargeEmojiFontSizeAndroid = 178;
-constexpr auto kLargeEmojiShiftTopAndroid = 140;
-constexpr auto kEmojiShiftLeftAndroid = -4;
+constexpr auto kLargeEmojiShiftTopAndroid = 165;
+constexpr auto kEmojiShiftLeftAndroid = -7;
 
 enum class ImageType {
 	Mac,
@@ -197,7 +198,7 @@ enum class ImageType {
 };
 
 [[nodiscard]] ImageType GuessImageType(QString tag) {
-	if (tag.indexOf("NotoColorEmoji") >= 0) {
+	if (tag.indexOf("NotoColorEmoji") >= 0 || tag.indexOf("Noto-COLR") >= 0) {
 		return ImageType::Android;
 	} else if (tag.indexOf("twemoji") >= 0) {
 		return ImageType::Twemoji;
@@ -374,7 +375,11 @@ QImage Generator::generateImage(int imageIndex) {
 	auto emojiCount = int(data_.list.size());
 	auto columnsCount = kEmojiInRow;
 
-	auto sourceSize = kScaleFromLarge ? kLargeEmojiSize : kEmojiSize;
+	const auto sourceSize = !kScaleFromLarge
+		? kEmojiSize
+		: (type == ImageType::Android)
+		? kLargeEmojiSizeAndroid
+		: kLargeEmojiSize;
 
 	auto font = QGuiApplication::font();
 	auto base = writeImages_;
@@ -399,6 +404,8 @@ QImage Generator::generateImage(int imageIndex) {
 			: (type == ImageType::Mac)
 			? kLargeEmojiFontSizeMac
 			: kLargeEmojiFontSizeAndroid);
+		// A missing glyph must stay missing. Otherwise macOS paints Apple Color Emoji.
+		font.setStyleStrategy(QFont::NoFontMerging);
 		if (QFontInfo(font).family() != family) {
 			return QImage();
 		}
