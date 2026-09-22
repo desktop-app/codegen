@@ -8,12 +8,16 @@
 
 #include "codegen/emoji/data_old.h"
 
+#include <set>
+
 namespace codegen {
 namespace emoji {
 
 [[nodiscard]] InputId InputIdFromString(const QString &emoji);
 [[nodiscard]] QString InputIdToString(const InputId &id);
-[[nodiscard]] InputData ReadData(const QString &path);
+[[nodiscard]] InputData ReadData(
+	const QString &path,
+	std::set<QString> *allEmoji = nullptr);
 
 } // namespace emoji
 } // namespace codegen

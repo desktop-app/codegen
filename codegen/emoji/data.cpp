@@ -705,13 +705,14 @@ bool CheckOldInCurrent(
 bool CheckOldInCurrent(
 		const InputData &data,
 		const std::set<Id> &variatedIds,
-		const std::vector<QString> &oldDataPaths) {
+		const std::vector<QString> &oldDataPaths,
+		std::set<Id> &oldEmoji) {
 	if (!CheckOldInCurrent(data, GetDataOld1(), variatedIds)
 		|| !CheckOldInCurrent(data, GetDataOld2(), variatedIds)) {
 		return false;
 	}
 	for (const auto &path : oldDataPaths) {
-		const auto old = ReadData(path);
+		const auto old = ReadData(path, &oldEmoji);
 		if (old.colored.empty() || old.doubleColored.empty()) {
 			return false;
 		} else if (!CheckOldInCurrent(data, old, variatedIds)) {
@@ -738,7 +739,8 @@ Data PrepareData(const QString &dataPath, const std::vector<QString> &oldDataPat
 		return Data();
 	}
 
-	if (!CheckOldInCurrent(input, variatedIds, oldDataPaths)) {
+	auto oldEmoji = std::set<Id>();
+	if (!CheckOldInCurrent(input, variatedIds, oldDataPaths, oldEmoji)) {
 		return Data();
 	}
 
@@ -769,6 +771,21 @@ Data PrepareData(const QString &dataPath, const std::vector<QString> &oldDataPat
 
 	fillReplaces(result);
 	if (result.list.empty()) {
+		return Data();
+	}
+
+	auto oldEmojiFound = true;
+	for (const auto &emoji : oldEmoji) {
+		auto bare = emoji;
+		bare.remove(QChar(kPostfix));
+		if (!result.map.contains(bare)) {
+			logDataError()
+				<< "Historical emoji not found in generated map: "
+				<< emoji.toStdString();
+			oldEmojiFound = false;
+		}
+	}
+	if (!oldEmojiFound) {
 		return Data();
 	}
 

@@ -255,7 +255,7 @@ QString InputIdToString(const InputId &id) {
 	return result;
 }
 
-InputData ReadData(const QString &path) {
+InputData ReadData(const QString &path, std::set<QString> *allEmoji) {
 	const auto parsed = ReadFile(path);
 	if (!parsed) {
 		return InputData();
@@ -353,6 +353,15 @@ InputData ReadData(const QString &path) {
 						return InputData();
 					}
 					result.other.push_back(inputId);
+				}
+			}
+		}
+	}
+	if (allEmoji) {
+		for (const auto &section : file) {
+			for (const auto &part : section) {
+				for (const auto &line : part) {
+					allEmoji->insert(line.begin(), line.end());
 				}
 			}
 		}

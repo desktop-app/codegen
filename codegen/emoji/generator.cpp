@@ -11,6 +11,7 @@
 #include <QtGui/QGuiApplication>
 #include <QtGui/QPainter>
 #include <QtCore/QDir>
+#include <QtCore/QFileInfo>
 
 namespace codegen {
 namespace emoji {
@@ -26,6 +27,26 @@ common::ProjectInfo Project = {
 	"empty",
 	false, // forceReGenerate
 };
+
+std::vector<QString> OldDataPaths(const Options &options) {
+	if (options.writeImages.isEmpty()) {
+		return {};
+	}
+	auto result = options.oldDataPaths;
+	for (auto &path : result) {
+		path = QFileInfo(path).absoluteFilePath();
+	}
+	const auto directory = QDir(QFileInfo(options.dataPath).absolutePath()
+		+ "/emoji_old");
+	const auto files = directory.entryList({ "*.txt" }, QDir::Files, QDir::Name);
+	for (const auto &file : files) {
+		const auto path = directory.absoluteFilePath(file);
+		if (std::find(result.begin(), result.end(), path) == result.end()) {
+			result.push_back(path);
+		}
+	}
+	return result;
+}
 
 QRect computeSourceRect(const QImage &image) {
 	auto size = image.width();
@@ -143,7 +164,7 @@ uint32 countCrc32(const void *data, std::size_t size) {
 
 Generator::Generator(const Options &options) : project_(Project)
 , writeImages_(options.writeImages)
-, data_(PrepareData(options.dataPath, options.oldDataPaths))
+, data_(PrepareData(options.dataPath, OldDataPaths(options)))
 , replaces_(PrepareReplaces(options.replacesPath)) {
 	QDir dir(options.outputPath);
 	if (!dir.mkpath(".")) {
