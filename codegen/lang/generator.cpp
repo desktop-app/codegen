@@ -346,6 +346,9 @@ bool Generator::writeSource() {
 
 	source_->include("lang/lang_keys.h")
 		.include(baseName_ + "_counts.h")
+		.includeFromLibrary("algorithm")
+		.includeFromLibrary("cstring")
+		.includeFromLibrary("iterator")
 		.pushNamespace("Lang")
 		.pushNamespace();
 
@@ -422,10 +425,7 @@ ushort GetTagIndex(QLatin1String tag) {\n\
 
 	source_->stream() << "\
 }\n\
-\n\
-ushort GetKeyIndex(QLatin1String key) {\n\
-	auto size = key.size();\n\
-	auto data = key.data();\n";
+\n";
 
 	auto indices = std::map<QString, QString>();
 	for (auto i = 0, total = int(langpack_.entries.size()); i != total; ++i) {
@@ -459,11 +459,72 @@ ushort GetKeyIndex(QLatin1String key) {\n\
 		}
 	}
 
-	writeSetSearch(keysSet, [&](const QString &key) {
-		auto it = taggedKeys.find(key);
-		const auto name = (it != taggedKeys.end()) ? it->second : key;
-		return indexOfKey(name);
-	}, "kKeysCount");
+	auto sortedKeys = std::vector<std::pair<QByteArray, QString>>();
+	sortedKeys.reserve(keysSet.size());
+	for (const auto &key : keysSet) {
+		const auto it = taggedKeys.find(key);
+		const auto &name = (it != taggedKeys.end()) ? it->second : key;
+		sortedKeys.emplace_back(key.toLatin1(), indexOfKey(name));
+	}
+	std::sort(sortedKeys.begin(), sortedKeys.end(), [](const auto &a, const auto &b) {
+		return (a.first.size() != b.first.size())
+			? (a.first.size() < b.first.size())
+			: (a.first < b.first);
+	});
+
+	source_->pushNamespace().stream() << "\
+\n\
+struct KeyEntry {\n\
+	qsizetype offset = 0;\n\
+	int size = 0;\n\
+	ushort index = 0;\n\
+};\n\
+\n\
+const char KeyNames[] = {\n";
+	for (const auto &[name, index] : sortedKeys) {
+		auto separator = "";
+		for (const auto ch : name) {
+			source_->stream() << separator << '\'' << ch << "',";
+			separator = " ";
+		}
+		source_->stream() << '\n';
+	}
+	source_->stream() << "\
+};\n\
+\n\
+const KeyEntry KeyEntries[] = {\n";
+	auto nameOffset = qsizetype(0);
+	for (const auto &[name, index] : sortedKeys) {
+		source_->stream() << "\
+	{ " << nameOffset << ", " << name.size() << ", " << index << " },\n";
+		nameOffset += name.size();
+	}
+	source_->stream() << "\
+};\n\
+\n";
+
+	// New names add only data, so GetKeyIndex keeps a fixed size within the MSVC ARM64 Debug limit.
+	source_->popNamespace().stream() << "\
+\n\
+ushort GetKeyIndex(QLatin1String key) {\n\
+	const auto less = [](const KeyEntry &entry, QLatin1String name) {\n\
+		return (entry.size != name.size())\n\
+			? (entry.size < name.size())\n\
+			: (std::memcmp(\n\
+				KeyNames + entry.offset,\n\
+				name.data(),\n\
+				std::size_t(entry.size)) < 0);\n\
+	};\n\
+	const auto end = std::end(KeyEntries);\n\
+	const auto i = std::lower_bound(std::begin(KeyEntries), end, key, less);\n\
+	return (i != end\n\
+		&& i->size == key.size()\n\
+		&& !std::memcmp(\n\
+			KeyNames + i->offset,\n\
+			key.data(),\n\
+			std::size_t(i->size)))\n\
+		? i->index\n\
+		: kKeysCount;\n";
 	header_->popNamespace().newline();
 
 	source_->stream() << "\
