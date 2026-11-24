@@ -140,7 +140,7 @@ void ParsedFile::fillPluralTags() {
 			++i;
 			continue;
 		}
-		logAssert(i + kPluralPartCount < count);
+		logAssert(i + kPluralPartCount <= count);
 
 		// Accumulate all tags from all plural variants.
 		auto tags = std::vector<LangPack::Tag>();
